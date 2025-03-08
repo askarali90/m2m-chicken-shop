@@ -1,0 +1,65 @@
+.top-navbar {
+    position: fixed;
+    top: 0;
+    left: 250px; /* Default when sidebar is expanded */
+    width: calc(100% - 250px); /* Adjust width */
+    height: 60px;
+    background-color: #000;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 20px;
+    transition: all 0.3s ease-in-out; /* Smooth transition */
+  }
+  
+  /* When Sidebar is Collapsed */
+  .sidebar-collapsed .top-navbar {
+    left: 60px; /* New position when sidebar is collapsed */
+    width: calc(100% - 60px); /* Adjust width */
+  }
+  
+  
+  /* Left Section */
+  .top-navbar .left h3 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: bold;
+  }
+  
+  /* Right Section */
+  .top-navbar .right {
+    display: flex;
+    align-items: center;
+  }
+  
+  /* Profile */
+  .profile {
+    display: flex;
+    align-items: center;
+    margin-right: 20px;
+  }
+  
+  .profile-img {
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    margin-right: 8px;
+    border: 2px solid white;
+  }
+  
+  /* Logout Button */
+  .logout-btn {
+    background: #d9534f; /* Red */
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  
+  .logout-btn:hover {
+    background: #c9302c;
+  }
+  

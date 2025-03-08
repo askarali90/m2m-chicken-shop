@@ -1,0 +1,64 @@
+.app-container {
+    display: flex;
+    transition: all 0.3s ease-in-out;
+  }
+  
+  /* Sidebar Styles */
+  .sidebar {
+    width: 250px;
+    background: #222;
+    color: white;
+    height: 100vh;
+    transition: width 0.3s ease-in-out;
+  }
+  
+  .sidebar.collapsed {
+    width: 60px;
+  }
+  
+  .sidebar-title {
+    text-align: center;
+    margin: 0px 0;
+    border-bottom: 1px solid #303030;
+  }
+  
+  .hidden {
+    visibility: hidden;
+  }
+  
+  /* Navbar Styles */
+  .top-navbar {
+    position: fixed;
+    top: 0;
+    left: 250px;
+    width: calc(100% - 250px);
+    height: 100px;
+    background: black;
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 20px;
+    transition: all 0.3s ease-in-out;
+    z-index: 10;
+  }
+  
+  .top-navbar.collapsed {
+    left: 60px;
+    width: calc(100% - 60px);
+  }
+  
+  .menu-btn {
+    background: transparent;
+    border: none;
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+    margin-right: 20px;
+  }
+  
+  .header-container {
+    display: flex;
+    justify-content: space-between;
+    flex-direction: row;
+  }

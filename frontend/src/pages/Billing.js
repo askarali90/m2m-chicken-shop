@@ -1,0 +1,391 @@
+import React, { useState, useEffect } from "react";
+import axios from "axios";
+import { Modal, Button } from "react-bootstrap";
+import Form from 'react-bootstrap/Form';
+import Select from "react-select";
+import "./Billing.css";
+
+const Billing = () => {
+  const [products, setProducts] = useState([]);
+  const [customers, setCustomers] = useState([]);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [quantity, setQuantity] = useState(1);
+  const [cart, setCart] = useState([]);
+  const [showModal, setShowModal] = useState(false);
+  const [totalAmount, setTotalAmount] = useState(0);
+  const [tenderedAmount, setTenderedAmount] = useState(0);
+  const [change, setChange] = useState(0);
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [useRedeemablePoints, setUseRedeemablePoints] = useState(false);
+  const [redeemedPoints, setRedeemedPoints] = useState(0);
+  const [finalAmount, setFinalAmount] = useState(0);
+
+
+  const quickAddItems = [
+    { name: '500gm WS', product: 'Chicken W Skin', qty: 0.5 },
+    { name: '1kg WS', product: 'Chicken W Skin', qty: 1 },
+    { name: '1.5kg WS', product: 'Chicken W Skin', qty: 1.5 },
+    { name: '2kg WS', product: 'Chicken W Skin', qty: 2 },
+    { name: '3kg WS', product: 'Chicken W Skin', qty: 3 },
+    { name: '5kg WS', product: 'Chicken W Skin', qty: 5 },
+    { name: '500gm WOS', product: 'Chicken W/O Skin', qty: 0.5 },
+    { name: '1kg WOS', product: 'Chicken W/O Skin', qty: 1 },
+    { name: '1.5kg WOS', product: 'Chicken W/O Skin', qty: 1.5 },
+    { name: '2kg WOS', product: 'Chicken W/O Skin', qty: 2 },
+    { name: '3kg WOS', product: 'Chicken W/O Skin', qty: 3 },
+    { name: '5kg WOS', product: 'Chicken W/O Skin', qty: 5 },
+  ];
+
+  // Fetch products from DB
+  useEffect(() => {
+    axios.get("http://localhost:5000/api/products")
+      .then((res) => setProducts(res.data))
+      .catch((err) => console.error("Error fetching products:", err));
+  }, []);
+
+  // Fetch customers from DB
+  useEffect(() => {
+    axios.get("http://localhost:5000/api/customers")
+      .then((res) => setCustomers(res.data))
+      .catch((err) => console.error("Error fetching customers:", err));
+  }, []);
+
+  useEffect(() => {
+    let discount = 0;
+    if (useRedeemablePoints && selectedCustomer) {
+      discount = Math.min(selectedCustomer.redeemablePoints, totalAmount * 0.5);
+      setRedeemedPoints(discount);
+    } else {
+      setRedeemedPoints(0);
+    }
+    setFinalAmount(totalAmount - discount);
+  }, [useRedeemablePoints, selectedCustomer, totalAmount]);
+
+
+  // Handle adding products to the cart
+  const handleAddItem = () => {
+    if (!selectedProduct || quantity <= 0) return;
+    const total = selectedProduct.price * quantity;
+    setCart([...cart, { ...selectedProduct, quantity, total }]);
+    setTotalAmount((prevTotal) => prevTotal + total);
+
+    // Reset selection for the next product
+    setSelectedProduct(null);
+    document.getElementById("productDropdown").value = "";
+    setQuantity(1);
+  };
+
+  const handleQuickAdd = (productName, qty) => {
+    const product = products.find(p => p.name === productName);
+    if (product) {
+        setSelectedProduct(product);
+        setQuantity(qty);
+        const total = product.price * qty;
+        setCart([...cart, { ...product, quantity, total }]);
+        setTotalAmount((prevTotal) => prevTotal + total);
+    }
+  };
+
+  // Handle removing an item from cart
+  const handleRemoveItem = (id) => {
+    const updatedCart = cart.filter((item) => item._id !== id);
+    const newTotal = updatedCart.reduce((acc, item) => acc + item.total, 0);
+    setCart(updatedCart);
+    setTotalAmount(newTotal);
+  };
+
+  // Handle customer selection
+  const handleCustomerSelect = (selectedOption) => {
+    const customer = customers.find((c) => c.customerId === selectedOption.value.customerId);
+    console.log("Gotcha : ", customer);
+    setSelectedCustomer(customer);
+  };
+
+  // Handle product selection
+  const handleProductSelect = (selectedOption) => {
+    console.log("got : ", selectedOption);
+    const product = products.find((p) => p.productId === selectedOption.value.productId);
+    setSelectedProduct(product);
+  };
+
+  // Handle checkout process
+  const handleCheckout = () => {
+    if (!selectedCustomer) {
+      alert("Please select a customer before checkout.");
+      return;
+    }
+
+    setShowModal(true);
+  };
+
+  // Handle tendered amount change
+  const handleTenderedAmountChange = (e) => {
+    const amount = parseFloat(e.target.value) || 0;
+    setTenderedAmount(amount);
+    setChange(amount - finalAmount);
+  };
+
+  // Final checkout process
+  const processCheckout = async () => {
+    if (!selectedCustomer) {
+      alert("Please select a customer.");
+      return;
+    }
+
+    if (tenderedAmount < finalAmount) {
+      alert("Tendered amount cannot be less than the total amount!");
+      return;
+    }
+
+    try {
+      const response = await axios.post("http://localhost:5000/api/checkout", {
+        customerId: selectedCustomer.phone,  // ✅ Send phone number as customerId
+        totalAmount,
+        cart,
+        finalAmount,
+        redeemedPoints,
+      });
+
+      // ✅ Print Bill after checkout
+      printBill(selectedCustomer, cart, totalAmount, tenderedAmount, change);
+
+      setCart([]);
+      setShowModal(false);
+      setTotalAmount(0);
+      setTenderedAmount(0);
+      setChange(0);
+      setSelectedCustomer(null);
+      document.getElementById("productDropdown").value = "";
+      document.getElementById("customerDropdown").value = "";
+      setSelectedProduct(null);
+      setUseRedeemablePoints(false);
+      setRedeemedPoints(0);
+      setFinalAmount(0);
+    } catch (error) {
+      console.error("Error processing checkout:", error);
+      alert(error.response?.data?.message || "Checkout failed!");
+    }
+  };
+
+  const printBill = (customer, cart, totalAmount, tenderedAmount, change) => {
+    const billContent = `
+      <div style="font-family: Arial, sans-serif; width: 200px;">
+        <h3 style="text-align: center; margin:0px; padding: 0px;">M2M Chicken Shop</h3>
+        <h6 style="text-align: center; margin:0px; padding: 0px;">206A, Cutchery Street,</h6>
+        <h6 style="text-align: center; margin:0px; padding: 0px;">Gobi - 638452.</h6>
+        <h6 style="text-align: center; margin:0px; padding: 0px;">Ph: 9942733472/9791533472</h6>
+        <h5 style="text-align: center;">Bill Estimate</h5>
+        <p>${new Date().toLocaleString()}</p>
+        <p>Name: ${customer.name}</p>
+        <hr>
+        <table style="width: 100%; border-collapse: collapse;">
+          <thead>
+            <tr style="">
+              <th style="text-align: center; border-bottom: 1px solid #707070;">Qty</th>
+              <th style="text-align: left; border-bottom: 1px solid #707070;">Items</th>
+
+              <th style="text-align: right; border-bottom: 1px solid #707070;">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${cart
+              .map(
+                (item) => `
+              <tr>
+                <td>${item.name}</td>
+                <td style="text-align: center;">${item.quantity}</td>
+                <td style="text-align: right;">${item.total.toFixed(2)}</td>
+              </tr>
+            `
+              )
+              .join("")}
+          </tbody>
+        </table>
+        <hr>
+        <p><strong>Total:</strong>  <span style="text-align: right; float: right;" >₹ ${totalAmount.toFixed(2)}</span> </p>
+        <p><strong>Tendered:</strong> <span style="text-align: right; float: right;" >₹ ${tenderedAmount.toFixed(2)}</span></p>
+        <p><strong>Change:</strong> <span style="text-align: right; float: right;" >₹ ${change.toFixed(2)}</span></p>
+        <hr>
+      </div>
+    `;
+
+    const printWindow = window.open("", "", "width=300,height=600");
+    printWindow.document.write(billContent);
+    printWindow.document.close();
+    printWindow.print();
+  };
+
+
+  return (
+    <div className="container-fluid mt-4">
+      <h2 className="text-center">Billing POS</h2>
+      <div className="billing-pos-container">
+        <div className="product-section">
+          <div className="mt-3">
+          <label>Select Customer</label>
+          <Select
+            options={customers.map(customer => ({
+              value: customer,
+              label: `${customer.name} - ${customer.phone}`
+            }))}
+            onChange={handleCustomerSelect}
+            isSearchable
+            placeholder="Search or Select Customer"
+            id="customerDropdown"
+          />
+        </div>
+        {selectedCustomer && (
+          <div className="redeem-points-container">
+            <h6 style={{textAlign: 'right', padding: '10px 0px'}}>Redeemable Points: {selectedCustomer.redeemablePoints.toFixed(2)}</h6>
+            <Form.Check // prettier-ignore
+              type="switch"
+              reverse
+              id="custom-switch"
+              label="Use Redeemable Points"
+              onChange={() => setUseRedeemablePoints(!useRedeemablePoints)}
+              checked={useRedeemablePoints}
+            />
+          </div>
+        )}
+
+        {/* Product Selection */}
+        <div className="mt-3">
+          <label>Find Product</label>
+          <Select
+            options={products.map(product => ({
+              value: product,
+              label: `${product.name} - ₹${product.price}`,
+              price: product.price
+            }))}
+            onChange={handleProductSelect}
+            isSearchable
+            placeholder="Search or Select Product"
+            id="productDropdown"
+          />
+        </div>
+
+          <div className="quick-select-container">
+            {quickAddItems.map((item, index) => (
+              <Button key={index} onClick={() => handleQuickAdd(item.product, item.qty)} className={item.name.includes('WS') ? 'with-skin-item' : 'without-skin-item'}>
+                {item.name}
+              </Button>
+            ))}
+          </div>
+
+          {/* Selected Product Details */}
+          {selectedProduct && (
+            <div className="mt-3">
+              <p><strong>Product:</strong> {selectedProduct.name}</p>
+              <p><strong>Price:</strong> {selectedProduct.price}</p>
+              <label>QTY</label>
+              <input
+                  type="number"
+                  className="form-control"
+                  step="0.01" // ✅ Allow decimal values
+                  value={quantity}
+                  onChange={(e) => {
+                    let val = e.target.value;
+
+                    // ✅ Allow empty input to support backspace
+                    if (val === "") {
+                      setQuantity("");
+                    }
+                    // ✅ Allow input like "0.25"
+                    else if (/^\d*\.?\d*$/.test(val)) {
+                      setQuantity(val);
+                    }
+                  }}
+                  onBlur={() => {
+                    if (quantity === "" || isNaN(quantity)) {
+                      setQuantity(1); // ✅ Reset to 1 if left empty
+                    } else {
+                      setQuantity(parseFloat(quantity)); // ✅ Convert to float on blur
+                    }
+                  }}
+                />
+
+
+              <div className="text-center mt-3">
+                <button className="btn btn-dark btn-lg" onClick={handleAddItem}>
+                  + Add Item
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Total Amount & Checkout Button */}
+          <h3 className="text-center total-amount-text">Total Amount: {totalAmount.toFixed(2)}</h3>
+          <h3 className="text-center total-amount-text">Final Amount: ₹{finalAmount.toFixed(2)}</h3>
+          <div className="checkout-container text-center mt-4">
+            <button className="btn btn-dark btn-large px-5 py-3" onClick={handleCheckout}>
+              Checkout
+            </button>
+          </div>
+        </div>
+
+        <div className="cart-section">
+          {/* Cart Table */}
+          <table className="table table-bordered mt-4">
+            <thead className="table-dark">
+              <tr>
+                <th>QTY</th>
+                <th>Product</th>
+                <th>Price</th>
+                <th>Total</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {cart.map((item, index) => (
+                <tr key={index}>
+                  <td>{item.quantity}</td>
+                  <td>{item.name}</td>
+                  <td>{item.price}</td>
+                  <td>{item.total}</td>
+                  <td>
+                    <button className="btn btn-danger" onClick={() => handleRemoveItem(item._id)}>
+                      X
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Checkout Modal */}
+        <Modal show={showModal} onHide={() => setShowModal(false)}>
+          <Modal.Header closeButton>
+            <Modal.Title>Checkout</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <div>
+              <label>Total Amount</label>
+              <input type="text" className="form-control" value={finalAmount.toFixed(2)} readOnly />
+            </div>
+            <div>
+              <label>Tendered Amount</label>
+              <input
+                type="number"
+                className="form-control"
+                value={tenderedAmount}
+                onChange={handleTenderedAmountChange}
+              />
+            </div>
+            <div>
+              <label>Change</label>
+              <input type="text" className="form-control" value={change.toFixed(2)} readOnly />
+            </div>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="primary" onClick={processCheckout}>Submit</Button>
+            <Button variant="secondary" onClick={() => setShowModal(false)}>Close</Button>
+          </Modal.Footer>
+        </Modal>
+      </div>
+
+    </div>
+  );
+};
+
+export default Billing;

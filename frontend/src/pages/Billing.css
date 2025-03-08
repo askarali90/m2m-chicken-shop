@@ -1,0 +1,58 @@
+.billing-pos-container {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+
+    .product-section {
+        width: 34%;
+        border: 1px solid #cccccc;
+        border-radius: 4px;
+        padding: .5rem;
+        height: 80vh;
+    }
+
+    .cart-section {
+        width: 64%;
+        border: 1px solid #cccccc;;
+        border-radius: 4px;
+        padding: .5rem;
+        height: 80vh;
+    } 
+
+    .total-amount-text {
+        padding: 1rem;
+    }
+
+    .checkout-container {
+        display: flex;
+        justify-content: center;
+        padding: 1rem;;
+    }
+
+    .with-skin-item {
+        background-color: indigo !important;
+        border: 1px solid indigo !important;
+        margin: 5px;
+    }
+
+    .without-skin-item {
+        background-color: olive !important;
+        border: 1px solid olive !important;
+        margin: 5px;
+    }
+
+    .quick-select-container {
+        padding-top: 10px;
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: space-evenly;
+    }
+
+    .redeem-points-container {
+        border: 1px solid #cccccc;
+        border-radius: 4px;
+        margin: 10px 0px;
+        padding: 5px;
+    }
+}

@@ -1,0 +1,74 @@
+/* Sidebar */
+.sidebar {
+    width: 250px;
+    background: #333;
+    color: white;
+    height: 100vh;
+    transition: width 0.3s ease-in-out;
+    padding: 20px;
+    position: fixed;
+    left: 0;
+    top: 0;
+    overflow: hidden;
+}
+
+/* Sidebar collapsed */
+.sidebar.collapsed {
+    width: 60px;
+}
+
+/* Sidebar navigation items */
+.sidebar .nav-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 0px;
+    text-decoration: none;
+    color: white;
+    transition: all 0.3s ease-in-out;
+    border-bottom: 1px solid #303030;
+}
+
+.sidebar .nav-link:hover {
+    background: #555;
+    border-radius: 5px;
+}
+
+/* Ensure sidebar text hides when collapsed */
+.sidebar.collapsed .sidebar-text {
+    display: none;
+}
+
+/* Toggle button */
+.toggle-btn {
+    position: fixed;
+    top: 20px;
+    left: 260px;
+    background: black;
+    color: white;
+    border: none;
+    cursor: pointer;
+    padding: 5px 10px;
+    font-size: 18px;
+    border-radius: 5px;
+    transition: all 0.3s ease-in-out;
+}
+
+.sidebar.collapsed + .toggle-btn {
+    left: 70px;
+}
+
+/* Content area */
+.content {
+    margin-left: 250px;
+    margin-top: 80px;
+    padding: 20px;
+    width: calc(100% - 250px);
+    transition: margin-left 0.3s ease-in-out, width 0.3s ease-in-out;
+}
+
+.sidebar.collapsed + .content {
+    margin-left: 60px;
+    width: calc(100% - 60px);
+}
+

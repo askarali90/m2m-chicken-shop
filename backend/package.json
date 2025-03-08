@@ -1,0 +1,17 @@
+{
+  "name": "m2m-chicken-shop-backend",
+  "version": "1.0.0",
+  "main": "server.js",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.0",
+    "mongodb": "^6.14.0",
+    "mongoose": "^6.3.0"
+  },
+  "scripts": {
+    "start": "node server.js"
+  }
+}
