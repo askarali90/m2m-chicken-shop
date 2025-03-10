@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { Modal, Button } from "react-bootstrap";
+import { Modal, Button, CardText } from "react-bootstrap";
 import Form from 'react-bootstrap/Form';
 import Select from "react-select";
 import "./Billing.css";
@@ -19,8 +19,8 @@ const Billing = () => {
   const [useRedeemablePoints, setUseRedeemablePoints] = useState(false);
   const [redeemedPoints, setRedeemedPoints] = useState(0);
   const [finalAmount, setFinalAmount] = useState(0);
-
-
+  const [tokenNumber, setTokenNumber] = useState(1);
+  
   const quickAddItems = [
     { name: '500gm WS', product: 'Chicken W Skin', qty: 0.5 },
     { name: '1kg WS', product: 'Chicken W Skin', qty: 1 },
@@ -61,6 +61,28 @@ const Billing = () => {
     setFinalAmount(totalAmount - discount);
   }, [useRedeemablePoints, selectedCustomer, totalAmount]);
 
+  useEffect(() => {
+    const today = new Date().toDateString();
+    const savedTokenData = localStorage.getItem("tokenData");
+    if (savedTokenData) {
+      const { date, number } = JSON.parse(savedTokenData);
+      if (date === today) {
+        setTokenNumber(number + 1);
+      } else {
+        setTokenNumber(1);
+      }
+    }
+  }, []);
+
+  const updateTokenNumber = () => {
+    const today = new Date().toDateString();
+    setTokenNumber((prevToken) => {
+      const newToken = prevToken + 1;
+      localStorage.setItem("tokenData", JSON.stringify({ date: today, number: newToken }));
+      return newToken;
+    });
+  };
+
 
   // Handle adding products to the cart
   const handleAddItem = () => {
@@ -75,13 +97,28 @@ const Billing = () => {
     setQuantity(1);
   };
 
+  const handleQuantityChange = (index, value) => {
+    setCart((prevCart) => {
+      const updatedCart = prevCart.map((item, i) => 
+        i === index ? { ...item, quantity: value, total: item.price * value } : item
+      );
+      const newTotal = updatedCart.reduce((acc, item) => acc + item.total, 0);
+      setTotalAmount(newTotal);
+      return updatedCart;
+    });
+  };
+
+
   const handleQuickAdd = (productName, qty) => {
     const product = products.find(p => p.name === productName);
     if (product) {
         setSelectedProduct(product);
         setQuantity(qty);
         const total = product.price * qty;
-        setCart([...cart, { ...product, quantity, total }]);
+        setCart(prevCart => [
+          ...prevCart, 
+          { ...product, quantity: qty, total }
+        ]);
         setTotalAmount((prevTotal) => prevTotal + total);
     }
   };
@@ -97,13 +134,11 @@ const Billing = () => {
   // Handle customer selection
   const handleCustomerSelect = (selectedOption) => {
     const customer = customers.find((c) => c.customerId === selectedOption.value.customerId);
-    console.log("Gotcha : ", customer);
     setSelectedCustomer(customer);
   };
 
   // Handle product selection
   const handleProductSelect = (selectedOption) => {
-    console.log("got : ", selectedOption);
     const product = products.find((p) => p.productId === selectedOption.value.productId);
     setSelectedProduct(product);
   };
@@ -119,11 +154,28 @@ const Billing = () => {
   };
 
   // Handle tendered amount change
+  // const handleTenderedAmountChange = (e) => {
+  //   const amount = parseFloat(e.target.value) || 0;
+  //   setTenderedAmount(amount);
+  //   setChange(amount - finalAmount);
+  // };
   const handleTenderedAmountChange = (e) => {
-    const amount = parseFloat(e.target.value) || 0;
-    setTenderedAmount(amount);
-    setChange(amount - finalAmount);
+    let amount = e.target.value;
+  
+    // Allow empty input (backspace support)
+    if (amount === "") {
+      setTenderedAmount("");
+      setChange(0);
+      return;
+    }
+  
+    // Convert to float only if valid number
+    if (!isNaN(amount) && parseFloat(amount) >= 0) {
+      setTenderedAmount(parseFloat(amount));
+      setChange(parseFloat(amount) - finalAmount);
+    }
   };
+  
 
   // Final checkout process
   const processCheckout = async () => {
@@ -147,7 +199,8 @@ const Billing = () => {
       });
 
       // ✅ Print Bill after checkout
-      printBill(selectedCustomer, cart, totalAmount, tenderedAmount, change);
+      printBill(selectedCustomer, cart, totalAmount, tenderedAmount, change, tokenNumber);
+      updateTokenNumber();
 
       setCart([]);
       setShowModal(false);
@@ -167,7 +220,7 @@ const Billing = () => {
     }
   };
 
-  const printBill = (customer, cart, totalAmount, tenderedAmount, change) => {
+  const printBill = (customer, cart, totalAmount, tenderedAmount, change, tokenNumber) => {
     const billContent = `
       <div style="font-family: Arial, sans-serif; width: 200px;">
         <h3 style="text-align: center; margin:0px; padding: 0px;">M2M Chicken Shop</h3>
@@ -206,6 +259,7 @@ const Billing = () => {
         <p><strong>Tendered:</strong> <span style="text-align: right; float: right;" >₹ ${tenderedAmount.toFixed(2)}</span></p>
         <p><strong>Change:</strong> <span style="text-align: right; float: right;" >₹ ${change.toFixed(2)}</span></p>
         <hr>
+        <h2 style="text-align: center;">Token #:M2M-${tokenNumber}</h3>
       </div>
     `;
 
@@ -213,6 +267,7 @@ const Billing = () => {
     printWindow.document.write(billContent);
     printWindow.document.close();
     printWindow.print();
+    setTimeout(() => printWindow.close(), 500);
   };
 
 
@@ -338,10 +393,16 @@ const Billing = () => {
             <tbody>
               {cart.map((item, index) => (
                 <tr key={index}>
-                  <td>{item.quantity}</td>
+                  <input
+                      type="number"
+                      value={item.quantity}
+                      className="form-control cart-quantity"
+                      step="0.01"
+                      onChange={(e) => handleQuantityChange(index, parseFloat(e.target.value) || 1)}
+                    />
                   <td>{item.name}</td>
-                  <td>{item.price}</td>
-                  <td>{item.total}</td>
+                  <td>{item.price.toFixed(2)}</td>
+                  <td>{item.total.toFixed(2)}</td>
                   <td>
                     <button className="btn btn-danger" onClick={() => handleRemoveItem(item._id)}>
                       X

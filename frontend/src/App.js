@@ -24,6 +24,7 @@ function App() {
         <Sidebar isCollapsed={isCollapsed} toggleSidebar={toggleSidebar} />
         <div className="content">
           <Routes>
+            <Route path="/" element={<Dashboard />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/products" element={<Products />} />
             <Route path="/customers" element={<Customers />} />

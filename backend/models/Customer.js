@@ -5,7 +5,7 @@ const customerSchema = new mongoose.Schema({
   name: { type: String, required: true },
   dob: { type: String }, 
   phone: { type: String, required: true },
-  email: { type: String, required: true },
+  email: { type: String },
   address: { type: String },
   redeemablePoints: { type: Number, default: 0 }, 
   totalRedeemedPoints: { type: Number, default: 0 } 

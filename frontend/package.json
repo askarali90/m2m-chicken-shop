@@ -1,7 +1,7 @@
 {
   "name": "frontend",
   "version": "1.0.0",
-  "description": "React POS Loyalty System",
+  "description": "React M2M Chicken Shop",
   "main": "src/index.js",
   "scripts": {
     "start": "react-scripts start",
