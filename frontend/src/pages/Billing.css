@@ -4,23 +4,23 @@
     justify-content: space-between;
 
     .product-section {
-        width: 34%;
+        width: 42%;
         border: 1px solid #cccccc;
         border-radius: 4px;
         padding: .5rem;
-        height: 80vh;
+        height: auto;
     }
 
     .cart-section {
-        width: 64%;
+        width: 56%;
         border: 1px solid #cccccc;;
         border-radius: 4px;
         padding: .5rem;
-        height: 80vh;
+        height: auto;
     } 
 
     .total-amount-text {
-        padding: 1rem;
+        padding: .25rem;
     }
 
     .checkout-container {
@@ -47,6 +47,11 @@
         flex-direction: row;
         flex-wrap: wrap;
         justify-content: space-evenly;
+    }
+
+    .cart-quantity {
+        width: 95%;
+        margin: 2px;
     }
 
     .redeem-points-container {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { Modal, Button, Form, Table } from "react-bootstrap";
+import { Modal, Button, Form, Table, Pagination } from "react-bootstrap";
 
 const Customers = () => {
   const [customers, setCustomers] = useState([]);
@@ -13,6 +13,9 @@ const Customers = () => {
     email: "",
     address: "",
   });
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     fetchCustomers();
@@ -49,10 +52,18 @@ const Customers = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const validatePhoneNumber = (phone) => {
+    return /^[6789]\d{9}$/.test(phone);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.name || !formData.phone) {
       alert("Name and Phone Number are required!");
+      return;
+    }
+    if (!validatePhoneNumber(formData.phone)) {
+      alert("Invalid phone number! Enter a valid 10-digit Indian mobile number.");
       return;
     }
 
@@ -70,6 +81,7 @@ const Customers = () => {
       fetchCustomers();
       handleCloseModal();
     } catch (err) {
+      alert("Error Saving Customer.");
       console.error("Error saving customer", err);
     }
   };
@@ -85,6 +97,28 @@ const Customers = () => {
     }
   };
 
+  const handleSort = (key) => {
+    let direction = "asc";
+    if (sortConfig.key === key && sortConfig.direction === "asc") {
+      direction = "desc";
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const sortedCustomers = [...customers].sort((a, b) => {
+    if (!sortConfig.key) return 0;
+    if (a[sortConfig.key] < b[sortConfig.key]) return sortConfig.direction === "asc" ? -1 : 1;
+    if (a[sortConfig.key] > b[sortConfig.key]) return sortConfig.direction === "asc" ? 1 : -1;
+    return 0;
+  });
+
+  const paginatedCustomers = sortedCustomers.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const totalPages = Math.ceil(customers.length / itemsPerPage);
+
   return (
     <div className="container-fluid mt-4">
       <div className="header-container">
@@ -95,26 +129,28 @@ const Customers = () => {
       <Table striped bordered hover className="mt-3">
         <thead className="table-dark">
           <tr>
-            <th>Customer ID</th>
-            <th>Name</th>
-            <th>Date of Birth</th>
-            <th>Phone</th>
-            <th>Email</th>
-            <th>Address</th>
-            <th>Redeemable Points</th>
+            <th onClick={() => handleSort("customerId")}>Customer ID</th>
+            <th onClick={() => handleSort("name")}>Name</th>
+            <th onClick={() => handleSort("dob")}>DOB</th>
+            {/* <th onClick={() => handleSort("phone")}>Phone</th> */}
+            <th onClick={() => handleSort("email")}>Email</th>
+            {/* <th onClick={() => handleSort("address")}>Address</th> */}
+            <th onClick={() => handleSort("redeemablePoints")}>Redeemable Points</th>
+            <th onClick={() => handleSort("totalRedeemedPoints")}>Redeemed Points</th>
             <th>Actions</th>
           </tr>
         </thead>
         <tbody>
-          {customers.map((customer) => (
+          {paginatedCustomers.map((customer) => (
             <tr key={customer.customerId}>
               <td>{customer.customerId}</td>
               <td>{customer.name}</td>
               <td>{customer.dob || "N/A"}</td>
-              <td>{customer.phone}</td>
+              {/* <td>{customer.phone}</td> */}
               <td>{customer.email}</td>
-              <td>{customer.address}</td>
+              {/* <td>{customer.address}</td> */}
               <td>{customer.redeemablePoints}</td>
+              <td>{customer.totalRedeemedPoints}</td>
               <td>
                 <Button variant="warning" size="sm" onClick={() => handleShowModal(customer)}>Edit</Button>
                 <Button variant="danger" size="sm" className="ms-2" onClick={() => handleDelete(customer.customerId)}>Delete</Button>
@@ -123,6 +159,16 @@ const Customers = () => {
           ))}
         </tbody>
       </Table>
+
+      <Pagination className="mt-3">
+        <Pagination.Prev onClick={() => setCurrentPage(currentPage - 1)} disabled={currentPage === 1} />
+        {[...Array(totalPages).keys()].map((number) => (
+          <Pagination.Item key={number + 1} active={number + 1 === currentPage} onClick={() => setCurrentPage(number + 1)}>
+            {number + 1}
+          </Pagination.Item>
+        ))}
+        <Pagination.Next onClick={() => setCurrentPage(currentPage + 1)} disabled={currentPage === totalPages} />
+      </Pagination>
 
       {/* Modal for Adding/Editing Customers */}
       <Modal show={showModal} onHide={handleCloseModal}>
