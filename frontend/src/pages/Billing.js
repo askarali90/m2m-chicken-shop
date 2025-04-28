@@ -245,7 +245,7 @@ const Billing = () => {
               .map(
                 (item) => `
               <tr>
-                <td>${item.name}</td>
+                <td>${item.name} x ${item.price}</td>
                 <td style="text-align: center;">${item.quantity}</td>
                 <td style="text-align: right;">${item.total.toFixed(2)}</td>
               </tr>
