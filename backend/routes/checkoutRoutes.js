@@ -70,12 +70,29 @@ router.post("/", async (req, res) => {
   }
 });
 
-// GET all bills
+// GET Bills with optional filters
 router.get("/", async (req, res) => {
   try {
-    const bills = await Bill.find();
+    const { from, to, customerId } = req.query;
+    let query = {};
+
+    // Filter by date range
+    if (from && to) {
+      query.date = {
+        $gte: new Date(new Date(from).setHours(0, 0, 0, 0)),
+        $lte: new Date(new Date(to).setHours(23, 59, 59, 999)),
+      };
+    }
+
+    // Filter by customerId
+    if (customerId) {
+      query.customerId = { $regex: new RegExp(customerId, "i") }; // Case insensitive search
+    }
+
+    const bills = await Bill.find(query).sort({ date: -1 }); // Newest first
     res.json(bills);
   } catch (error) {
+    console.error("Error fetching bills:", error);
     res.status(500).json({ message: "Error fetching bills", error });
   }
 });

@@ -8,24 +8,96 @@ const Dashboard = () => {
   const [salesPerDay, setSalesPerDay] = useState([]);
   const [recentTransactions, setRecentTransactions] = useState([]);
 
+  const [passwordInput, setPasswordInput] = useState("");
+  const [authenticated, setAuthenticated] = useState(false);
+  const [isUnlocking, setIsUnlocking] = useState(false); // 🆕
+
+  const correctPassword = "M2M@2024"; // 👉 Your password
+
   useEffect(() => {
-    axios.get("http://localhost:5000/api/reports/summary")
-      .then((res) => {
-        setTotalSales(res.data.totalSales);
-        setTotalCustomers(res.data.totalCustomers);
-        setTotalProducts(res.data.totalProducts);
-        setSalesPerDay(res.data.salesPerDay);
-        setRecentTransactions(res.data.recentTransactions);
-      })
-      .catch((err) => console.error("Error fetching dashboard data:", err));
+    const isAuthenticated = localStorage.getItem("dashboardAuthenticated");
+    if (isAuthenticated === "true") {
+      setAuthenticated(true);
+    }
   }, []);
+
+  useEffect(() => {
+    if (authenticated) {
+      axios.get("http://localhost:5000/api/reports/summary")
+        .then((res) => {
+          setTotalSales(res.data.totalSales);
+          setTotalCustomers(res.data.totalCustomers);
+          setTotalProducts(res.data.totalProducts);
+          setSalesPerDay(res.data.salesPerDay);
+          setRecentTransactions(res.data.recentTransactions);
+        })
+        .catch((err) => console.error("Error fetching dashboard data:", err));
+    }
+  }, [authenticated]);
+
+  const handlePasswordSubmit = (e) => {
+    e.preventDefault();
+
+    if (isUnlocking) return; // prevent multiple clicks
+
+    if (passwordInput === correctPassword) {
+      setIsUnlocking(true);
+      setTimeout(() => {
+        setAuthenticated(true);
+        localStorage.setItem("dashboardAuthenticated", "true");
+        setIsUnlocking(false);
+      }, 1500); // small wait for smooth animation ✨
+    } else {
+      alert("Incorrect Password. Please try again.");
+      setPasswordInput("");
+    }
+  };
+
+  const handleLogout = () => {
+    setAuthenticated(false);
+    localStorage.removeItem("dashboardAuthenticated");
+    setPasswordInput("");
+  };
+
+  if (!authenticated) {
+    return (
+      <div className="container d-flex flex-column justify-content-center align-items-center" style={{ minHeight: "80vh" }}>
+        <h2>{isUnlocking ? "Unlocking..." : "Enter Password to Access Dashboard"}</h2>
+
+        {isUnlocking ? (
+          <div className="spinner-border text-dark mt-3" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
+        ) : (
+          <form onSubmit={handlePasswordSubmit} className="mt-3" style={{ width: "300px" }}>
+            <input
+              type="password"
+              className="form-control mb-2"
+              placeholder="Enter Password"
+              value={passwordInput}
+              onChange={(e) => setPasswordInput(e.target.value)}
+              autoFocus
+            />
+            <button type="submit" className="btn btn-dark w-100">
+              Unlock
+            </button>
+          </form>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="container-fluid mt-4">
-      <h2>Dashboard</h2>
+      <div className="d-flex justify-content-between align-items-center">
+        <h2>Dashboard</h2>
+        <button className="btn btn-outline-danger" onClick={handleLogout}>
+          Logout
+        </button>
+      </div>
 
       {/* Cards Row */}
-      <div className="row">
+      <div className="row mt-3">
         <div className="col-md-4">
           <div className="card p-3 mb-3">
             <h5>Total Sales</h5>

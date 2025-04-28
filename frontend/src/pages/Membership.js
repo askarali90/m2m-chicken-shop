@@ -4,6 +4,8 @@ import { QRCodeCanvas } from "qrcode.react"; // QR Code Generator
 import JsBarcode from "jsbarcode"; // Barcode Generator
 import html2canvas from "html2canvas"; // Convert to Image
 import "./Membership.css";
+import Select from "react-select";
+
 
 const Membership = () => {
   const [customers, setCustomers] = useState([]);
@@ -73,19 +75,24 @@ const Membership = () => {
     <div className="container-fluid mt-4">
       <h2>Membership Management</h2>
 
-      <div className="header-container">      
+      <div className="header-container justify-content-between">      
         {/* Customer Selection */}
         <div className="select-customer-container">
           <label>Select Customer</label>
-          <select className="form-control" onChange={handleCustomerSelect}>
-            <option value="">Select a customer</option>
-            {customers.map((customer) => (
-              <option key={customer._id} value={customer._id}>
-                {customer.name} - {customer.phone}
-              </option>
-            ))}
-          </select>
+          <Select
+            options={customers.map((customer) => ({
+              value: customer._id,
+              label: `${customer.name} - ${customer.phone}`,
+            }))}
+            onChange={(selectedOption) => {
+              const customer = customers.find((c) => c._id === selectedOption.value);
+              setSelectedCustomer(customer);
+            }}
+            placeholder="Select a customer"
+            isClearable
+          />
         </div>
+
 
         {/* Generate Card Button */}
         <button className="btn btn-dark mt-3" onClick={generateCard}>

@@ -90,7 +90,7 @@ const Products = () => {
 
   return (
     <div className="container-fluid mt-4">
-      <div className="header-container">
+      <div className="header-container justify-content-between">
         <h2>Products</h2>
         <Button variant="dark" onClick={() => handleShowModal()}>Add Product</Button>
       </div>      

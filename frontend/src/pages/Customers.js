@@ -15,7 +15,9 @@ const Customers = () => {
   });
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const itemsPerPage = 50;
 
   useEffect(() => {
     fetchCustomers();
@@ -81,7 +83,7 @@ const Customers = () => {
       fetchCustomers();
       handleCloseModal();
     } catch (err) {
-      alert("Error Saving Customer.");
+      alert("Error Saving Customer. please check the customer is already saved!");
       console.error("Error saving customer", err);
     }
   };
@@ -105,25 +107,49 @@ const Customers = () => {
     setSortConfig({ key, direction });
   };
 
-  const sortedCustomers = [...customers].sort((a, b) => {
+  const filteredCustomers = customers.filter((customer) =>
+    customer.name.toLowerCase().includes(searchTerm) ||
+    customer.customerId.toLowerCase().includes(searchTerm) ||
+    (customer.phone && customer.phone.includes(searchTerm)) ||
+    (customer.email && customer.email.toLowerCase().includes(searchTerm))
+  );
+  
+  const sortedCustomers = [...filteredCustomers].sort((a, b) => {
     if (!sortConfig.key) return 0;
     if (a[sortConfig.key] < b[sortConfig.key]) return sortConfig.direction === "asc" ? -1 : 1;
     if (a[sortConfig.key] > b[sortConfig.key]) return sortConfig.direction === "asc" ? 1 : -1;
     return 0;
   });
+  
+
+  const handleSearch = (e) => {
+    setSearchTerm(e.target.value.toLowerCase());
+  };
+  
 
   const paginatedCustomers = sortedCustomers.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
 
-  const totalPages = Math.ceil(customers.length / itemsPerPage);
+  const totalPages = Math.ceil(filteredCustomers.length / itemsPerPage);
 
   return (
     <div className="container-fluid mt-4">
-      <div className="header-container">
+      <div className="header-container justify-content-between">
         <h2>Customers</h2>
-        <Button variant="dark" onClick={() => handleShowModal()}>Add Customer</Button>
+        <div className="d-flex justify-content-between" style={{ width: "30vw" }}>
+          <div className="d-flex justify-content-between align-items-center mt-3">
+            <Form.Control
+              type="text"
+              placeholder="Search by name, ID, phone, or email"
+              value={searchTerm}
+              onChange={handleSearch}
+              style={{ width: "20vw" }}
+            />
+          </div>
+          <Button variant="dark" onClick={() => handleShowModal()}>Add Customer</Button>
+        </div>
       </div>
 
       <Table striped bordered hover className="mt-3">
@@ -149,8 +175,8 @@ const Customers = () => {
               {/* <td>{customer.phone}</td> */}
               <td>{customer.email}</td>
               {/* <td>{customer.address}</td> */}
-              <td>{customer.redeemablePoints}</td>
-              <td>{customer.totalRedeemedPoints}</td>
+              <td>{customer.redeemablePoints.toFixed(2)}</td>
+              <td>{customer.totalRedeemedPoints.toFixed(2)}</td>
               <td>
                 <Button variant="warning" size="sm" onClick={() => handleShowModal(customer)}>Edit</Button>
                 <Button variant="danger" size="sm" className="ms-2" onClick={() => handleDelete(customer.customerId)}>Delete</Button>
