@@ -20,6 +20,8 @@ const Billing = () => {
   const [redeemedPoints, setRedeemedPoints] = useState(0);
   const [finalAmount, setFinalAmount] = useState(0);
   const [tokenNumber, setTokenNumber] = useState(1);
+  const [modeOfPayment, setModeOfPayment] = useState("Cash"); // default to "Cash"
+
   
   const quickAddItems = [
     { name: '500gm WS', product: 'Chicken W Skin', qty: 0.5 },
@@ -196,6 +198,7 @@ const Billing = () => {
         cart,
         finalAmount,
         redeemedPoints,
+        modeOfPayment
       });
 
       // ✅ Print Bill after checkout
@@ -436,6 +439,18 @@ const Billing = () => {
             <div>
               <label>Change</label>
               <input type="text" className="form-control" value={change.toFixed(2)} readOnly />
+            </div>
+            <div className="mb-3">
+              <label>Mode of Payment</label>
+              <Form.Select
+                value={modeOfPayment}
+                onChange={(e) => setModeOfPayment(e.target.value)}
+              >
+                <option value="Cash">Cash</option>
+                <option value="UPI">UPI</option>
+                <option value="Card">Card</option>
+                <option value="Other">Other</option>
+              </Form.Select>
             </div>
           </Modal.Body>
           <Modal.Footer>

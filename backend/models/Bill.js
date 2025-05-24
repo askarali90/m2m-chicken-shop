@@ -16,6 +16,7 @@ const BillSchema = new mongoose.Schema({
   redeemedPoints: { type: Number },
   earnedPoints: { type: Number, required: true },
   date: { type: Date, default: Date.now },
+  modeOfPayment: { type: String }
 });
 
 module.exports = mongoose.model("Bill", BillSchema);

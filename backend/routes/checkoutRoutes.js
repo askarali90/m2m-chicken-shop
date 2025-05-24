@@ -7,7 +7,7 @@ const Bill = require("../models/Bill"); // Import Bill Model
 // Checkout Route
 router.post("/", async (req, res) => {
   try {
-    const { customerId, totalAmount, finalAmount, cart, redeemedPoints } = req.body;
+    const { customerId, totalAmount, finalAmount, cart, redeemedPoints, modeOfPayment } = req.body;
 
     // Find the customer by phone number
     const customer = await Customer.findOne({ phone: customerId });
@@ -41,6 +41,7 @@ router.post("/", async (req, res) => {
       redeemedPoints: pointsToDeduct,
       earnedPoints,
       date: new Date(),
+      modeOfPayment
     });
 
     await newTransaction.save();
@@ -54,6 +55,7 @@ router.post("/", async (req, res) => {
       redeemedPoints: pointsToDeduct,
       earnedPoints,
       date: new Date(),
+      modeOfPayment
     });
 
     await newBill.save();

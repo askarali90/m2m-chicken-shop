@@ -7,6 +7,9 @@ const Dashboard = () => {
   const [totalProducts, setTotalProducts] = useState(0);
   const [salesPerDay, setSalesPerDay] = useState([]);
   const [recentTransactions, setRecentTransactions] = useState([]);
+  const [paymentBreakdown, setPaymentBreakdown] = useState([]);
+  const [cashInDrawer, setCashInDrawer] = useState("");
+
 
   const [passwordInput, setPasswordInput] = useState("");
   const [authenticated, setAuthenticated] = useState(false);
@@ -26,6 +29,7 @@ const Dashboard = () => {
       axios.get("http://localhost:5000/api/reports/summary")
         .then((res) => {
           setTotalSales(res.data.totalSales);
+          setPaymentBreakdown(res.data.paymentBreakdown);
           setTotalCustomers(res.data.totalCustomers);
           setTotalProducts(res.data.totalProducts);
           setSalesPerDay(res.data.salesPerDay);
@@ -101,7 +105,7 @@ const Dashboard = () => {
         <div className="col-md-4">
           <div className="card p-3 mb-3">
             <h5>Total Sales</h5>
-            <p>₹{totalSales.toFixed(2)}</p>
+            <p style={{visibility: 'hidden'}}>₹{totalSales.toFixed(2)}</p>
           </div>
         </div>
         <div className="col-md-4">
@@ -144,14 +148,78 @@ const Dashboard = () => {
       </table>
 
       {/* Recent Transactions */}
-      <h3 className="mt-4">Recent Transactions</h3>
+      {/* <h3 className="mt-4">Recent Transactions</h3>
       <ul className="list-group">
         {recentTransactions.map((transaction, index) => (
           <li key={index} className="list-group-item">
             {transaction.customerId} - ₹{transaction.totalAmount.toFixed(2)} on {new Date(transaction.date).toLocaleDateString()}
           </li>
         ))}
-      </ul>
+      </ul> */}
+
+<h3 className="mt-4">Daily Sales Breakdown</h3>
+<table className="table table-bordered">
+  <thead>
+    <tr>
+      <th><label style={{float: "right"}}> Amount</label> Mode of Payment </th>
+    </tr>
+  </thead>
+  <tbody>
+  {paymentBreakdown.length > 0 ? (
+  <>
+    <ul className="list-group mb-3">
+      {paymentBreakdown.map((entry, index) => (
+        <li key={index} className="list-group-item d-flex justify-content-between align-items-center">
+          {entry._id || "Unknown"}:
+          <span>₹{entry.total.toFixed(2)}</span>
+        </li>
+      ))}
+      <li className="list-group-item d-flex justify-content-between align-items-center bg-light fw-bold">
+        Total Sales:
+        <span>
+          ₹{paymentBreakdown.reduce((acc, curr) => acc + curr.total, 0).toFixed(2)}
+        </span>
+      </li>
+    </ul>
+  </>
+) : (
+  <p>No payment breakdown available.</p>
+)}
+
+  </tbody>
+</table>
+
+    <div className="mb-3">
+      <label><strong>Cash in Drawer (₹): </strong></label>
+      <input
+        type="number"
+        className="form-control"
+        value={cashInDrawer}
+        onChange={(e) => setCashInDrawer(e.target.value)}
+      />
+    </div>
+
+    <div className="alert alert-info">
+    {(() => {
+      const cashSales = paymentBreakdown
+        .filter(entry => (entry._id || "").toLowerCase() === "cash")
+        .reduce((acc, curr) => acc + curr.total, 0);
+
+      const cashDrawer = parseFloat(cashInDrawer || 0);
+      const difference = cashDrawer - cashSales;
+
+      return (
+        <>
+          <h3><strong>Expected Cash:</strong> ₹{cashSales.toFixed(2)} </h3>
+          <br />
+          <h3><strong>Difference:</strong> ₹{difference.toFixed(2)} </h3>
+        </>
+      );
+    })()}
+
+    </div>
+
+
     </div>
   );
 };

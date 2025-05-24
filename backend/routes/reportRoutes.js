@@ -7,8 +7,25 @@ const Product = require("../models/Product");
 // GET Dashboard Summary
 router.get("/summary", async (req, res) => {
   try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
     // Total Sales (Sum of all bills)
     const totalSales = await Bill.aggregate([{ $group: { _id: null, total: { $sum: "$totalAmount" } } }]);
+
+    const paymentBreakdown = await Bill.aggregate([
+      {
+        $match: {
+          date: { $gte: today },
+        },
+      },
+      {
+        $group: {
+          _id: "$modeOfPayment",
+          total: { $sum: "$finalAmount" },
+        },
+      },
+    ]);
 
     // Total Customers
     const totalCustomers = await Customer.countDocuments();
@@ -36,6 +53,7 @@ router.get("/summary", async (req, res) => {
       totalProducts,
       salesPerDay,
       recentTransactions,
+      paymentBreakdown
     });
   } catch (error) {
     console.error("Dashboard Summary Error:", error);

@@ -16,6 +16,7 @@ const TransactionSchema = new mongoose.Schema({
   earnedPoints: { type: Number, required: true },
   redeemedPoints: {type: Number },
   date: { type: Date, default: Date.now },
+  modeOfPayment: { type: String }
 });
 
 module.exports = mongoose.model("Transaction", TransactionSchema);
