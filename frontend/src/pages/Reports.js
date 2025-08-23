@@ -167,6 +167,7 @@ const Reports = () => {
             <th onClick={() => handleSort("customerId")} style={{ cursor: "pointer" }}>Customer ID</th>
             <th onClick={() => handleSort("totalAmount")} style={{ cursor: "pointer" }}>Total Amount</th>
             <th onClick={() => handleSort("earnedPoints")} style={{ cursor: "pointer" }}>Earned Points</th>
+            <th onClick={() => handleSort("kgsAccumulated")} style={{ cursor: "pointer" }}>Purchased KGs</th>
             <th onClick={() => handleSort("date")} style={{ cursor: "pointer" }}>Date</th>
             <th onClick={() => handleSort("modeOfPayment")} style={{ cursor: "pointer" }}>Payment Mode</th>
           </tr>
@@ -179,6 +180,7 @@ const Reports = () => {
                 <td>{bill.customerId}</td>
                 <td>₹{bill.totalAmount.toFixed(2)}</td>
                 <td>{bill.earnedPoints.toFixed(2)}</td>
+                <td>{bill.kgsAccumulated.toFixed(2)}</td>
                 <td>{new Date(bill.date).toLocaleString()}</td>
                 <td>{bill.modeOfPayment}</td>
               </tr>

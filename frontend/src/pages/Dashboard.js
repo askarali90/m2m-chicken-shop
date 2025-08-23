@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { Pagination } from "react-bootstrap";
 import axios from "axios";
 
 const Dashboard = () => {
@@ -9,9 +10,10 @@ const Dashboard = () => {
   const [recentTransactions, setRecentTransactions] = useState([]);
   const [paymentBreakdown, setPaymentBreakdown] = useState([]);
   const [cashInDrawer, setCashInDrawer] = useState("");
+  const [salesCurrentPage, setSalesCurrentPage] = useState(1);
+  const salesItemsPerPage = 5; // show 10 rows per page
 
-
-  const [passwordInput, setPasswordInput] = useState("");
+const [passwordInput, setPasswordInput] = useState("");
   const [authenticated, setAuthenticated] = useState(false);
   const [isUnlocking, setIsUnlocking] = useState(false); // 🆕
 
@@ -57,11 +59,54 @@ const Dashboard = () => {
     }
   };
 
+  const paginatedSalesPerDay = salesPerDay.slice(
+    (salesCurrentPage - 1) * salesItemsPerPage,
+    salesCurrentPage * salesItemsPerPage
+  );
+
+  const totalSalesPages = Math.ceil(salesPerDay.length / salesItemsPerPage);
+
   const handleLogout = () => {
     setAuthenticated(false);
     localStorage.removeItem("dashboardAuthenticated");
     setPasswordInput("");
   };
+
+  const handleSaveTodaySales = async () => {
+    try {
+      const cashSales = paymentBreakdown
+        .filter(entry => (entry._id || "").toLowerCase() === "cash")
+        .reduce((acc, curr) => acc + curr.total, 0);
+
+      const cardSales = paymentBreakdown
+        .filter(entry => (entry._id || "").toLowerCase() === "card")
+        .reduce((acc, curr) => acc + curr.total, 0);
+
+      const upiSales = paymentBreakdown
+        .filter(entry => (entry._id || "").toLowerCase() === "upi")
+        .reduce((acc, curr) => acc + curr.total, 0);
+
+      const totalSales = paymentBreakdown.reduce((acc, curr) => acc + curr.total, 0);
+      const cashDrawer = parseFloat(cashInDrawer || 0);
+      const difference = cashDrawer - cashSales;
+
+      await axios.post("http://localhost:5000/api/reports/save-today", {
+        date: new Date(),
+        totalSales,
+        cashSales,
+        cardSales,
+        upiSales,
+        cashInDrawer: cashDrawer,
+        difference
+      });
+
+      alert("Today's sales saved successfully!");
+    } catch (err) {
+      console.error("Error saving today’s sales:", err);
+      alert("Failed to save today’s sales.");
+    }
+  };
+
 
   if (!authenticated) {
     return (
@@ -124,7 +169,7 @@ const Dashboard = () => {
 
       {/* Sales Per Day Table */}
       <h3 className="mt-4">Sales Per Day</h3>
-      <table className="table table-bordered table-striped">
+      <table className="table table-bordered table-striped" id="salesPerDayTable">
         <thead className="table-dark">
           <tr>
             <th>Date</th>
@@ -132,8 +177,8 @@ const Dashboard = () => {
           </tr>
         </thead>
         <tbody>
-          {salesPerDay.length > 0 ? (
-            salesPerDay.map((sale, index) => (
+          {paginatedSalesPerDay.length > 0 ? (
+            paginatedSalesPerDay.map((sale, index) => (
               <tr key={index}>
                 <td>{sale._id}</td>
                 <td>₹{sale.totalSales.toFixed(2)}</td>
@@ -145,7 +190,28 @@ const Dashboard = () => {
             </tr>
           )}
         </tbody>
+
       </table>
+
+      <Pagination className="mt-3">
+        <Pagination.Prev
+          onClick={() => setSalesCurrentPage(salesCurrentPage - 1)}
+          disabled={salesCurrentPage === 1}
+        />
+        {[...Array(totalSalesPages).keys()].map((number) => (
+          <Pagination.Item
+            key={number + 1}
+            active={number + 1 === salesCurrentPage}
+            onClick={() => setSalesCurrentPage(number + 1)}
+          >
+            {number + 1}
+          </Pagination.Item>
+        ))}
+        <Pagination.Next
+          onClick={() => setSalesCurrentPage(salesCurrentPage + 1)}
+          disabled={salesCurrentPage === totalSalesPages}
+        />
+      </Pagination>
 
       {/* Recent Transactions */}
       {/* <h3 className="mt-4">Recent Transactions</h3>
@@ -156,71 +222,77 @@ const Dashboard = () => {
           </li>
         ))}
       </ul> */}
-
-<h3 className="mt-4">Daily Sales Breakdown</h3>
-<table className="table table-bordered">
-  <thead>
-    <tr>
-      <th><label style={{float: "right"}}> Amount</label> Mode of Payment </th>
-    </tr>
-  </thead>
-  <tbody>
-  {paymentBreakdown.length > 0 ? (
-  <>
-    <ul className="list-group mb-3">
-      {paymentBreakdown.map((entry, index) => (
-        <li key={index} className="list-group-item d-flex justify-content-between align-items-center">
-          {entry._id || "Unknown"}:
-          <span>₹{entry.total.toFixed(2)}</span>
-        </li>
-      ))}
-      <li className="list-group-item d-flex justify-content-between align-items-center bg-light fw-bold">
-        Total Sales:
-        <span>
-          ₹{paymentBreakdown.reduce((acc, curr) => acc + curr.total, 0).toFixed(2)}
-        </span>
-      </li>
-    </ul>
-  </>
-) : (
-  <p>No payment breakdown available.</p>
-)}
-
-  </tbody>
-</table>
-
-    <div className="mb-3">
-      <label><strong>Cash in Drawer (₹): </strong></label>
-      <input
-        type="number"
-        className="form-control"
-        value={cashInDrawer}
-        onChange={(e) => setCashInDrawer(e.target.value)}
-      />
-    </div>
-
-    <div className="alert alert-info">
-    {(() => {
-      const cashSales = paymentBreakdown
-        .filter(entry => (entry._id || "").toLowerCase() === "cash")
-        .reduce((acc, curr) => acc + curr.total, 0);
-
-      const cashDrawer = parseFloat(cashInDrawer || 0);
-      const difference = cashDrawer - cashSales;
-
-      return (
+    <div style={{border: "2px solid black", padding: "20px", marginTop: "30px", borderRadius: "10px"}}>
+      <h3 className="mt-4 mb-4 text-center">Today Sales Breakdown</h3>
+      <table className="table table-bordered">
+        <thead>
+          <tr>
+            <th><label style={{float: "right"}}> Amount</label> Mode of Payment </th>
+          </tr>
+        </thead>
+        <tbody>
+        {paymentBreakdown.length > 0 ? (
         <>
-          <h3><strong>Expected Cash:</strong> ₹{cashSales.toFixed(2)} </h3>
-          <br />
-          <h3><strong>Difference:</strong> ₹{difference.toFixed(2)} </h3>
+          <ul className="list-group mb-3">
+            {paymentBreakdown.map((entry, index) => (
+              <li key={index} className="list-group-item d-flex justify-content-between align-items-center">
+                {entry._id || "Unknown"}:
+                <span>₹{entry.total.toFixed(2)}</span>
+              </li>
+            ))}
+            <li className="list-group-item d-flex justify-content-between align-items-center bg-light fw-bold">
+              Total Sales:
+              <span>
+                ₹{paymentBreakdown.reduce((acc, curr) => acc + curr.total, 0).toFixed(2)}
+              </span>
+            </li>
+          </ul>
         </>
-      );
-    })()}
+      ) : (
+        <p>No payment breakdown available.</p>
+      )}
+
+        </tbody>
+      </table>
+
+      <div className="mb-3">
+        <label><strong>Cash in Drawer (₹): </strong></label>
+        <input
+          type="number"
+          className="form-control"
+          value={cashInDrawer}
+          onChange={(e) => setCashInDrawer(e.target.value)}
+        />
+      </div>
+
+      <div className="alert alert-info">
+      {(() => {
+        const cashSales = paymentBreakdown
+          .filter(entry => (entry._id || "").toLowerCase() === "cash")
+          .reduce((acc, curr) => acc + curr.total, 0);
+
+        const cashDrawer = parseFloat(cashInDrawer || 0);
+        const difference = cashDrawer - cashSales;
+
+        return (
+          <>
+            <h3><strong>Expected Cash:</strong> ₹{cashSales.toFixed(2)} </h3>
+            <br />
+            <h3><strong>Difference:</strong> ₹{difference.toFixed(2)} </h3>
+          </>
+        );
+      })()}
+
+      </div>
+
+      <div className="text-center mt-3">
+        <button className="btn btn-dark px-5 py-2" onClick={handleSaveTodaySales}>
+          Save Today’s Sales
+        </button>
+      </div>
 
     </div>
-
-
-    </div>
+  </div>
   );
 };
 

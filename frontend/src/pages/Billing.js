@@ -90,7 +90,7 @@ const Billing = () => {
   const handleAddItem = () => {
     if (!selectedProduct || quantity <= 0) return;
     const total = selectedProduct.price * quantity;
-    setCart([...cart, { ...selectedProduct, quantity, total }]);
+    setCart([...cart, { ...selectedProduct, quantity, kgs: quantity, total }]);
     setTotalAmount((prevTotal) => prevTotal + total);
 
     // Reset selection for the next product
@@ -102,7 +102,7 @@ const Billing = () => {
   const handleQuantityChange = (index, value) => {
     setCart((prevCart) => {
       const updatedCart = prevCart.map((item, i) => 
-        i === index ? { ...item, quantity: value, total: item.price * value } : item
+        i === index ? { ...item, quantity: value, kgs: value, total: item.price * value } : item
       );
       const newTotal = updatedCart.reduce((acc, item) => acc + item.total, 0);
       setTotalAmount(newTotal);
@@ -119,7 +119,7 @@ const Billing = () => {
         const total = product.price * qty;
         setCart(prevCart => [
           ...prevCart, 
-          { ...product, quantity: qty, total }
+          { ...product, quantity: qty,kgs: qty, total }
         ]);
         setTotalAmount((prevTotal) => prevTotal + total);
     }

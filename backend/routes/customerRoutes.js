@@ -70,4 +70,23 @@ router.delete("/:customerId", async (req, res) => {
   }
 });
 
+// PUT /api/customers/:id/clear-kgs
+router.put("/:id/clear-kgs", async (req, res) => {
+  try {
+    const customer = await Customer.findOneAndUpdate(
+      { customerId: req.params.id },
+      { $set: { kgsAccumulated: 0 } },
+      { new: true }
+    );
+
+    if (!customer) {
+      return res.status(404).json({ message: "Customer not found" });
+    }
+
+    res.json({ message: "Customer KGs cleared", customer });
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err });
+  }
+});
+
 module.exports = router;

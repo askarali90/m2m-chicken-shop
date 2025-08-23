@@ -58,6 +58,18 @@ const Customers = () => {
     return /^[6789]\d{9}$/.test(phone);
   };
 
+  const handleClearKgs = async (customerId) => {
+    if (window.confirm("Are you sure you want to clear purchased KGs for this customer?")) {
+      try {
+        await axios.put(`http://localhost:5000/api/customers/${customerId}/clear-kgs`);
+        fetchCustomers(); // refresh list
+      } catch (err) {
+        console.error("Error clearing customer kgs", err);
+        alert("Failed to clear purchased KGs");
+      }
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.name || !formData.phone) {
@@ -161,6 +173,7 @@ const Customers = () => {
             {/* <th onClick={() => handleSort("phone")}>Phone</th> */}
             <th onClick={() => handleSort("email")}>Email</th>
             {/* <th onClick={() => handleSort("address")}>Address</th> */}
+            <th onClick={() => handleSort("kgsAccumulated")}>Purchased KGs</th>
             <th onClick={() => handleSort("redeemablePoints")}>Redeemable Points</th>
             <th onClick={() => handleSort("totalRedeemedPoints")}>Redeemed Points</th>
             <th>Actions</th>
@@ -175,6 +188,19 @@ const Customers = () => {
               {/* <td>{customer.phone}</td> */}
               <td>{customer.email}</td>
               {/* <td>{customer.address}</td> */}
+              <td>
+                {customer.kgsAccumulated}
+                {customer.kgsAccumulated > 0 && (
+                  <Button
+                    variant="outline-danger"
+                    size="sm"
+                    className="ms-2 float-end"
+                    onClick={() => handleClearKgs(customer.customerId)}
+                  >
+                    ✖
+                  </Button>
+                )}
+              </td>
               <td>{customer.redeemablePoints.toFixed(2)}</td>
               <td>{customer.totalRedeemedPoints.toFixed(2)}</td>
               <td>

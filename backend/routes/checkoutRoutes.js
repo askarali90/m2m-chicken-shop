@@ -16,6 +16,14 @@ router.post("/", async (req, res) => {
       return res.status(404).json({ message: "Customer not found" });
     }
 
+    // Calculate total kgs from cart
+    let totalKgs = cart.reduce((sum, item) => sum + (item.kgs || 0), 0);
+    console.log("Total Kgs from cart:", totalKgs, " : ",cart);
+
+    // Update customer's kgsAccumulated
+    customer.kgsAccumulated = (customer.kgsAccumulated || 0) + totalKgs;
+
+
     // Calculate earned points for this transaction
     let earnedPoints = cart.reduce((total, item) => total + item.total * item.pointsPercentage, 0);
 
@@ -39,6 +47,7 @@ router.post("/", async (req, res) => {
       totalAmount,
       finalAmount, // UI sends this
       redeemedPoints: pointsToDeduct,
+      kgsAccumulated: customer.kgsAccumulated,
       earnedPoints,
       date: new Date(),
       modeOfPayment
@@ -53,6 +62,7 @@ router.post("/", async (req, res) => {
       totalAmount,
       finalAmount,
       redeemedPoints: pointsToDeduct,
+      kgsAccumulated: customer.kgsAccumulated,
       earnedPoints,
       date: new Date(),
       modeOfPayment
@@ -65,6 +75,7 @@ router.post("/", async (req, res) => {
       earnedPoints,
       redeemedPoints: pointsToDeduct,
       finalAmount,
+      kgsAccumulated: customer.kgsAccumulated,
     });
   } catch (error) {
     console.error("Checkout Error:", error);

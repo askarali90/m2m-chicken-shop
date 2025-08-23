@@ -9,12 +9,14 @@ const BillSchema = new mongoose.Schema({
       price: Number,
       quantity: Number,
       total: Number,
+      kgs: Number,
     },
   ],
   totalAmount: { type: Number, required: true },
   finalAmount: { type: Number },
   redeemedPoints: { type: Number },
   earnedPoints: { type: Number, required: true },
+  kgsAccumulated: { type: Number, default: 0 },
   date: { type: Date, default: Date.now },
   modeOfPayment: { type: String }
 });

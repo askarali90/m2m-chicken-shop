@@ -3,6 +3,7 @@ const router = express.Router();
 const Bill = require("../models/Bill");
 const Customer = require("../models/Customer");
 const Product = require("../models/Product");
+const DailySales = require("../models/DailySales");
 
 // GET Dashboard Summary
 router.get("/summary", async (req, res) => {
@@ -26,6 +27,16 @@ router.get("/summary", async (req, res) => {
         },
       },
     ]);
+
+    const totalKgs = await Customer.aggregate([
+      {
+        $group: {
+          _id: null,
+          total: { $sum: "$kgsAccumulated" }
+        }
+      }
+    ]);
+
 
     // Total Customers
     const totalCustomers = await Customer.countDocuments();
@@ -51,6 +62,7 @@ router.get("/summary", async (req, res) => {
       totalSales: totalSales.length > 0 ? totalSales[0].total : 0,
       totalCustomers,
       totalProducts,
+      totalKgsAccumulated: totalKgs.length > 0 ? totalKgs[0].total : 0,
       salesPerDay,
       recentTransactions,
       paymentBreakdown
@@ -61,4 +73,22 @@ router.get("/summary", async (req, res) => {
   }
 });
 
+router.post("/save-today", async (req, res) => {
+  try {
+    const { date, totalSales, cashSales, cardSales, upiSales, cashInDrawer, difference } = req.body;
+
+    // Upsert today's record
+    const today = new Date(date).toISOString().split("T")[0]; // yyyy-mm-dd
+    const dailySales = await DailySales.findOneAndUpdate(
+      { date: today },
+      { date: today, totalSales, cashSales, cardSales, upiSales, cashInDrawer, difference },
+      { upsert: true, new: true }
+    );
+
+    res.json({ message: "Today’s sales saved", dailySales });
+  } catch (err) {
+    console.error("Error saving daily sales:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
 module.exports = router;

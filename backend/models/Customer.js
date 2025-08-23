@@ -8,7 +8,8 @@ const customerSchema = new mongoose.Schema({
   email: { type: String },
   address: { type: String },
   redeemablePoints: { type: Number, default: 0 }, 
-  totalRedeemedPoints: { type: Number, default: 0 } 
+  totalRedeemedPoints: { type: Number, default: 0 },
+  kgsAccumulated: { type: Number, default: 0 } 
 });
 
 const Customer = mongoose.model("Customer", customerSchema);
