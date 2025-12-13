@@ -18,10 +18,9 @@ router.post("/", async (req, res) => {
 
     // Calculate total kgs from cart
     let totalKgs = cart.reduce((sum, item) => sum + (item.kgs || 0), 0);
-    console.log("Total Kgs from cart:", totalKgs, " : ",cart);
 
     // Update customer's kgsAccumulated
-    customer.kgsAccumulated = (customer.kgsAccumulated || 0) + totalKgs;
+    customer.kgsAccumulated = (customer.kgsAccumulated || 0) + Math.floor(totalKgs);
 
 
     // Calculate earned points for this transaction

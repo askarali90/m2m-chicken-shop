@@ -31,13 +31,17 @@ const productRoutes = require("./routes/productRoutes");
 const customerRoutes = require("./routes/customerRoutes");
 const authRoutes = require("./routes/authRoutes");
 const reportsRoutes = require("./routes/reportRoutes");
-const checkoutRoutes = require("./routes/checkoutRoutes"); // Adjust path if needed
+const checkoutRoutes = require("./routes/checkoutRoutes");
+const inventoryRoutes = require("./routes/inventoryRoutes");  // Adjust path if needed
+const creditSettlementRoutes = require("./routes/creditSettlementRoutes");
 app.use("/api/checkout", checkoutRoutes);
-// Use routes
 app.use("/api/products", productRoutes);
 app.use("/api/customers", customerRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/reports", reportsRoutes);
+app.use("/api/inventory", inventoryRoutes);
+app.use("/api/credit-settlements", creditSettlementRoutes);
+
 
 
 

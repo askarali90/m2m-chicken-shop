@@ -1,0 +1,12 @@
+#salesTable {
+      display: none;
+      border-collapse: collapse;
+      width: 100%;
+    }
+    #salesTable th, #salesTable td {
+      border: 1px solid #ddd;
+      padding: 8px;
+    }
+    #salesTable th {
+      background-color: #f2f2f2;
+    }

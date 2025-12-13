@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Pagination } from "react-bootstrap";
 import axios from "axios";
+import "./Dashboard.css";
 
 const Dashboard = () => {
   const [totalSales, setTotalSales] = useState(0);
@@ -12,8 +13,12 @@ const Dashboard = () => {
   const [cashInDrawer, setCashInDrawer] = useState("");
   const [salesCurrentPage, setSalesCurrentPage] = useState(1);
   const salesItemsPerPage = 5; // show 10 rows per page
-
-const [passwordInput, setPasswordInput] = useState("");
+  const [todaySales, setTodaySales] = useState(null);
+  const [salesData, setSalesData] = useState([]);
+  const [showTable, setShowTable] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [passwordInput, setPasswordInput] = useState("");
   const [authenticated, setAuthenticated] = useState(false);
   const [isUnlocking, setIsUnlocking] = useState(false); // 🆕
 
@@ -86,6 +91,10 @@ const [passwordInput, setPasswordInput] = useState("");
         .filter(entry => (entry._id || "").toLowerCase() === "upi")
         .reduce((acc, curr) => acc + curr.total, 0);
 
+      const creditSales = paymentBreakdown
+        .filter(entry => (entry._id || "").toLowerCase() === "credit")
+        .reduce((acc, curr) => acc + curr.total, 0);
+
       const totalSales = paymentBreakdown.reduce((acc, curr) => acc + curr.total, 0);
       const cashDrawer = parseFloat(cashInDrawer || 0);
       const difference = cashDrawer - cashSales;
@@ -96,6 +105,7 @@ const [passwordInput, setPasswordInput] = useState("");
         cashSales,
         cardSales,
         upiSales,
+        creditSales,
         cashInDrawer: cashDrawer,
         difference
       });
@@ -107,6 +117,42 @@ const [passwordInput, setPasswordInput] = useState("");
     }
   };
 
+  const handleButtonClick = async () => {
+    try {
+      const today = new Date().toISOString().split("T")[0];
+      const res = await axios.get(`http://localhost:5000/api/reports/today-sales?date=${today}`);
+      setTodaySales(Array.isArray(res.data) ? res.data : []); // ✅ Ensure it's an array
+      setShowTable(true);
+    } catch (err) {
+      console.error("Error fetching today's sales:", err);
+    }
+  };
+
+   const fetchSales = async (pageNum = 1) => {
+    try {
+      const today = new Date().toISOString().split("T")[0];
+      const res = await axios.get(`http://localhost:5000/api/reports/today-sales?date=${today}&page=${pageNum}&limit=5`);
+
+      if (res.data && Array.isArray(res.data.data)) {
+        setSalesData(res.data.data);
+        setTotalPages(res.data.totalPages || 1);
+        setPage(res.data.currentPage || 1);
+        setShowTable(true);
+      } else {
+        setSalesData([]);
+        setShowTable(true);
+      }
+    } catch (err) {
+      console.error("Error fetching today's sales:", err);
+      setSalesData([]);
+      setShowTable(true);
+    }
+  };
+
+
+  useEffect(() => {
+    if (showTable) fetchSales(page);
+  }, [page]);
 
   if (!authenticated) {
     return (
@@ -271,6 +317,10 @@ const [passwordInput, setPasswordInput] = useState("");
           .filter(entry => (entry._id || "").toLowerCase() === "cash")
           .reduce((acc, curr) => acc + curr.total, 0);
 
+        const creditSales = paymentBreakdown
+          .filter(entry => (entry._id || "").toLowerCase() === "credit")
+          .reduce((acc, curr) => acc + curr.total, 0);
+
         const cashDrawer = parseFloat(cashInDrawer || 0);
         const difference = cashDrawer - cashSales;
 
@@ -279,17 +329,76 @@ const [passwordInput, setPasswordInput] = useState("");
             <h3><strong>Expected Cash:</strong> ₹{cashSales.toFixed(2)} </h3>
             <br />
             <h3><strong>Difference:</strong> ₹{difference.toFixed(2)} </h3>
+            <br />
+            <h3><strong>Total Credit:</strong> ₹{creditSales.toFixed(2)} </h3>
           </>
         );
       })()}
 
       </div>
-
       <div className="text-center mt-3">
         <button className="btn btn-dark px-5 py-2" onClick={handleSaveTodaySales}>
           Save Today’s Sales
-        </button>
+        </button>        
       </div>
+
+      <div className="mt-4">
+      <button className="btn btn-primary" onClick={() => fetchSales(1)}>
+        Show Today Sales
+      </button>
+
+      {showTable && Array.isArray(salesData) && salesData.length > 0 && (
+        <>
+          <table className="table table-bordered table-striped mt-3">
+            <thead className="table-dark">
+              <tr>
+                <th>Date & Time</th>
+                <th>Total Sales</th>
+                <th>Cash</th>
+                <th>Card</th>
+                <th>UPI</th>
+                <th>Credit</th>
+                <th>Cash in Drawer</th>
+                <th>Difference</th>
+              </tr>
+            </thead>
+            <tbody>
+              {salesData.map((entry, index) => (
+                <tr key={index}>
+                  <td>{new Date(entry.date).toLocaleString()}</td>
+                  <td>₹{entry.totalSales.toFixed(2)}</td>
+                  <td>₹{entry.cashSales.toFixed(2)}</td>
+                  <td>₹{entry.cardSales.toFixed(2)}</td>
+                  <td>₹{entry.upiSales.toFixed(2)}</td>
+                  <td>₹{entry.creditSales.toFixed(2)}</td>
+                  <td>₹{entry.cashInDrawer.toFixed(2)}</td>
+                  <td>₹{entry.difference.toFixed(2)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <div className="d-flex justify-content-between align-items-center">
+            <button
+              className="btn btn-outline-secondary"
+              disabled={page <= 1}
+              onClick={() => setPage(page - 1)}
+            >
+              Previous
+            </button>
+            <span>Page {page} of {totalPages}</span>
+            <button
+              className="btn btn-outline-secondary"
+              disabled={page >= totalPages}
+              onClick={() => setPage(page + 1)}
+            >
+              Next
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  
 
     </div>
   </div>

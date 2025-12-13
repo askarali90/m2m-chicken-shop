@@ -73,17 +73,24 @@ router.get("/summary", async (req, res) => {
   }
 });
 
+
 router.post("/save-today", async (req, res) => {
   try {
-    const { date, totalSales, cashSales, cardSales, upiSales, cashInDrawer, difference } = req.body;
+    const { date, totalSales, cashSales, cardSales, upiSales, creditSales, cashInDrawer, difference } = req.body;
 
-    // Upsert today's record
-    const today = new Date(date).toISOString().split("T")[0]; // yyyy-mm-dd
-    const dailySales = await DailySales.findOneAndUpdate(
-      { date: today },
-      { date: today, totalSales, cashSales, cardSales, upiSales, cashInDrawer, difference },
-      { upsert: true, new: true }
-    );
+    const timestamp = new Date(date); // Full date-time
+    const dailySales = new DailySales({
+      date: timestamp,
+      totalSales,
+      cashSales,
+      cardSales,
+      upiSales,
+      creditSales,
+      cashInDrawer,
+      difference
+    });
+
+    await dailySales.save();
 
     res.json({ message: "Today’s sales saved", dailySales });
   } catch (err) {
@@ -91,4 +98,38 @@ router.post("/save-today", async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
+
+router.get("/today-sales", async (req, res) => {
+  try {
+    const date = new Date(req.query.date);
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 5;
+
+    const startOfDay = new Date(date.setHours(0, 0, 0, 0));
+    const endOfDay = new Date(date.setHours(23, 59, 59, 999));
+
+    const totalCount = await DailySales.countDocuments({
+      date: { $gte: startOfDay, $lte: endOfDay }
+    });
+
+    const sales = await DailySales.find({
+      date: { $gte: startOfDay, $lte: endOfDay }
+    })
+      .sort({ date: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit);
+
+    res.json({
+      data: sales,
+      currentPage: page,
+      totalPages: Math.ceil(totalCount / limit),
+      totalCount
+    });
+  } catch (err) {
+    console.error("Error fetching today's sales:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+
 module.exports = router;

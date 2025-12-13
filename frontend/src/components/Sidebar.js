@@ -15,6 +15,11 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
           </Link>
         </li>
         <li className="nav-item">
+          <Link className="nav-link text-white" to="/inventory">
+            <i className="bi bi-box-seam"></i> <span className={isCollapsed ? "hidden" : ""}>Inventory</span>
+          </Link>
+        </li>
+        <li className="nav-item">
           <Link className="nav-link text-white" to="/products">
             <i className="bi bi-box-seam"></i> <span className={isCollapsed ? "hidden" : ""}>Products</span>
           </Link>
@@ -27,6 +32,11 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
         <li className="nav-item">
           <Link className="nav-link text-white" to="/billing">
             <i className="bi bi-receipt"></i> <span className={isCollapsed ? "hidden" : ""}>Billing POS</span>
+          </Link>
+        </li>
+        <li className="nav-item">
+          <Link className="nav-link text-white" to="/credit-billing">
+            <i className="bi bi-receipt"></i> <span className={isCollapsed ? "hidden" : ""}>Credit Billing</span>
           </Link>
         </li>
         <li className="nav-item">

@@ -21,6 +21,14 @@ const Billing = () => {
   const [finalAmount, setFinalAmount] = useState(0);
   const [tokenNumber, setTokenNumber] = useState(1);
   const [modeOfPayment, setModeOfPayment] = useState("Cash"); // default to "Cash"
+  const [showCustomerModal, setShowCustomerModal] = useState(false);
+  const [formData, setFormData] = useState({
+    name: "",
+    dob: "",
+    phone: "",
+    email: "",
+    address: "",
+  });
 
   
   const quickAddItems = [
@@ -51,6 +59,15 @@ const Billing = () => {
       .then((res) => setCustomers(res.data))
       .catch((err) => console.error("Error fetching customers:", err));
   }, []);
+
+  const fetchCustomers = async () => {
+    try {
+      const res = await axios.get("http://localhost:5000/api/customers");
+      setCustomers(res.data);
+    } catch (err) {
+      console.error("Error fetching customers", err);
+    }
+  };
 
   useEffect(() => {
     let discount = 0;
@@ -186,7 +203,10 @@ const Billing = () => {
       return;
     }
 
-    if (tenderedAmount < finalAmount) {
+    const amountTendered = parseFloat(tenderedAmount) || 0;
+
+    // allow zero tendered amount when modeOfPayment is Credit
+    if (modeOfPayment !== "Credit" && amountTendered < finalAmount) {
       alert("Tendered amount cannot be less than the total amount!");
       return;
     }
@@ -198,11 +218,12 @@ const Billing = () => {
         cart,
         finalAmount,
         redeemedPoints,
-        modeOfPayment
+        modeOfPayment,
+        tenderedAmount: amountTendered
       });
 
       // ✅ Print Bill after checkout
-      printBill(selectedCustomer, cart, totalAmount, tenderedAmount, change, tokenNumber);
+      printBill(selectedCustomer, cart, totalAmount, amountTendered, change, tokenNumber);
       updateTokenNumber();
 
       setCart([]);
@@ -273,6 +294,56 @@ const Billing = () => {
     setTimeout(() => printWindow.close(), 500);
   };
 
+  const handleShowCustomerModal = (customer = null) => {
+    setFormData(
+      customer || {
+        name: "",
+        dob: "",
+        phone: "",
+        email: "",
+        address: "",
+      }
+    );
+    setShowCustomerModal(true);
+  };
+
+  const handleCloseCustomerModal = () => {
+    setShowCustomerModal(false);
+  };
+
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+   const validatePhoneNumber = (phone) => {
+    return /^[6789]\d{9}$/.test(phone);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!formData.name || !formData.phone) {
+      alert("Name and Phone Number are required!");
+      return;
+    }
+    if (!validatePhoneNumber(formData.phone)) {
+      alert("Invalid phone number! Enter a valid 10-digit Indian mobile number.");
+      return;
+    }
+
+    const customerData = {
+      ...formData,
+      customerId: formData.phone, // Set customerId as phone number
+    };
+
+    try {
+      await axios.post("http://localhost:5000/api/customers", customerData);
+      fetchCustomers();
+      handleCloseCustomerModal();
+    } catch (err) {
+      alert("Error Saving Customer. please check the customer is already saved!");
+      console.error("Error saving customer", err);
+    }
+  };
 
   return (
     <div className="container-fluid mt-4">
@@ -280,6 +351,7 @@ const Billing = () => {
       <div className="billing-pos-container">
         <div className="product-section">
           <div className="mt-3">
+            <a href="#" className="link-primary link-offset-2 link-underline-opacity-25 link-underline-opacity-100-hover float-end" onClick={() => handleShowCustomerModal()}>Add Customer</a>
           <label>Select Customer</label>
           <Select
             options={customers.map(customer => ({
@@ -291,6 +363,8 @@ const Billing = () => {
             placeholder="Search or Select Customer"
             id="customerDropdown"
           />
+          
+          
         </div>
         {selectedCustomer && (
           <div className="redeem-points-container">
@@ -449,7 +523,7 @@ const Billing = () => {
                 <option value="Cash">Cash</option>
                 <option value="UPI">UPI</option>
                 <option value="Card">Card</option>
-                <option value="Other">Other</option>
+                <option value="Credit">Credit</option>
               </Form.Select>
             </div>
           </Modal.Body>
@@ -459,6 +533,40 @@ const Billing = () => {
           </Modal.Footer>
         </Modal>
       </div>
+
+      {/* Modal for Adding/Editing Customers */}
+      <Modal show={showCustomerModal} onHide={handleCloseCustomerModal}>
+        <Modal.Header closeButton>
+          <Modal.Title>Add Customer</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form onSubmit={handleSubmit}>
+            <Form.Group className="mb-3">
+              <Form.Label>Name *</Form.Label>
+              <Form.Control type="text" name="name" value={formData.name} onChange={handleChange} required />
+            </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label>Date of Birth</Form.Label>
+              <Form.Control type="date" name="dob" value={formData.dob} onChange={handleChange} />
+            </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label>Phone *</Form.Label>
+              <Form.Control type="text" name="phone" value={formData.phone} onChange={handleChange} required />
+            </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label>Email</Form.Label>
+              <Form.Control type="email" name="email" value={formData.email} onChange={handleChange} />
+            </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label>Address</Form.Label>
+              <Form.Control type="text" name="address" value={formData.address} onChange={handleChange} />
+            </Form.Group>
+            <Button variant="primary" type="submit">
+              Add Customer
+            </Button>
+          </Form>
+        </Modal.Body>
+      </Modal>
 
     </div>
   );
