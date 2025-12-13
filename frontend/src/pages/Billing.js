@@ -33,17 +33,19 @@ const Billing = () => {
   
   const quickAddItems = [
     { name: '500gm WS', product: 'Chicken W Skin', qty: 0.5 },
+    { name: '500gm WS', product: 'Chicken W Skin', qty: 0.5 },    
+    { name: '250gm WS', product: 'Chicken W Skin', qty: 0.25 },
+    { name: '750gm WS', product: 'Chicken W Skin', qty: 0.75 },   
     { name: '1kg WS', product: 'Chicken W Skin', qty: 1 },
     { name: '1.5kg WS', product: 'Chicken W Skin', qty: 1.5 },
     { name: '2kg WS', product: 'Chicken W Skin', qty: 2 },
     { name: '3kg WS', product: 'Chicken W Skin', qty: 3 },
     { name: '5kg WS', product: 'Chicken W Skin', qty: 5 },
+    { name: '250gm WOS', product: 'Chicken W/O Skin', qty: 0.25 },
+    { name: '750gm WOS', product: 'Chicken W/O Skin', qty: 0.75 },
     { name: '500gm WOS', product: 'Chicken W/O Skin', qty: 0.5 },
     { name: '1kg WOS', product: 'Chicken W/O Skin', qty: 1 },
     { name: '1.5kg WOS', product: 'Chicken W/O Skin', qty: 1.5 },
-    { name: '2kg WOS', product: 'Chicken W/O Skin', qty: 2 },
-    { name: '3kg WOS', product: 'Chicken W/O Skin', qty: 3 },
-    { name: '5kg WOS', product: 'Chicken W/O Skin', qty: 5 },
   ];
 
   // Fetch products from DB

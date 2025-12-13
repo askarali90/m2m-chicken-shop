@@ -194,6 +194,7 @@ const Reports = () => {
       </Table>
 
       {/* Pagination */}
+      <div style={{overflow: 'auto'}}>
       <Pagination className="justify-content-center">
         <Pagination.Prev onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} disabled={currentPage === 1} />
         {[...Array(totalPages)].map((_, index) => (
@@ -207,6 +208,7 @@ const Reports = () => {
         ))}
         <Pagination.Next onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages} />
       </Pagination>
+      </div>
     </div>
   );
 };
