@@ -16,6 +16,9 @@ const Customers = () => {
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
+ // KGs inline edit state
+ const [editingKgsId, setEditingKgsId] = useState(null);
+ const [editingKgsValue, setEditingKgsValue] = useState("");
 
   const itemsPerPage = 50;
 
@@ -67,6 +70,35 @@ const Customers = () => {
         console.error("Error clearing customer kgs", err);
         alert("Failed to clear purchased KGs");
       }
+    }
+  };
+  const handleEditKgs = (customer) => {
+     setEditingKgsId(customer.customerId);
+    setEditingKgsValue(String(customer.kgsAccumulated ?? 0));
+  };
+
+  const handleCancelEditKgs = () => {
+    setEditingKgsId(null);
+    setEditingKgsValue("");
+  };
+
+  const handleSaveKgs = async (customer) => {
+    const value = parseFloat(editingKgsValue);
+    if (isNaN(value) || value < 0) {
+      alert("Enter a valid non-negative number for KGs.");
+      return;
+    }
+    try {
+      // send partial update; backend should merge/update the field
+      await axios.put(`http://localhost:5000/api/customers/${customer.customerId}`, {
+        ...customer,
+        kgsAccumulated: value,
+      });
+      await fetchCustomers();
+      handleCancelEditKgs();
+    } catch (err) {
+      console.error("Error updating KGs", err);
+      alert("Failed to update Purchased KGs");
     }
   };
 
@@ -189,16 +221,31 @@ const Customers = () => {
               <td>{customer.email}</td>
               {/* <td>{customer.address}</td> */}
               <td>
-                {customer.kgsAccumulated}
-                {customer.kgsAccumulated > 0 && (
-                  <Button
-                    variant="outline-danger"
-                    size="sm"
-                    className="ms-2 float-end"
-                    onClick={() => handleClearKgs(customer.customerId)}
-                  >
-                    ✖
-                  </Button>
+                {editingKgsId === customer.customerId ? (
+                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    <Form.Control
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={editingKgsValue}
+                      onChange={(e) => setEditingKgsValue(e.target.value)}
+                      style={{ width: "120px" }}
+                    />
+                    <Button size="sm" variant="success" onClick={() => handleSaveKgs(customer)}>Save</Button>
+                    <Button size="sm" variant="secondary" onClick={handleCancelEditKgs}>Cancel</Button>
+                  </div>
+                ) : (
+                  <>
+                    {customer.kgsAccumulated}
+                    <Button
+                      variant="outline-primary"
+                      size="sm"
+                      className="ms-2 float-end"
+                      onClick={() => handleEditKgs(customer)}
+                    >
+                      ✎
+                    </Button>
+                  </>
                 )}
               </td>
               <td>{customer.redeemablePoints.toFixed(2)}</td>
