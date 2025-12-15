@@ -238,8 +238,8 @@ const Dashboard = () => {
         </tbody>
 
       </table>
-
-      <Pagination className="mt-3">
+      <div style={{overflow: 'auto'}}>
+        <Pagination className="mt-3">
         <Pagination.Prev
           onClick={() => setSalesCurrentPage(salesCurrentPage - 1)}
           disabled={salesCurrentPage === 1}
@@ -258,6 +258,8 @@ const Dashboard = () => {
           disabled={salesCurrentPage === totalSalesPages}
         />
       </Pagination>
+      </div>    
+      
 
       {/* Recent Transactions */}
       {/* <h3 className="mt-4">Recent Transactions</h3>

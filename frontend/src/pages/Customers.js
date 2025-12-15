@@ -258,16 +258,18 @@ const Customers = () => {
           ))}
         </tbody>
       </Table>
-
-      <Pagination className="mt-3">
-        <Pagination.Prev onClick={() => setCurrentPage(currentPage - 1)} disabled={currentPage === 1} />
-        {[...Array(totalPages).keys()].map((number) => (
-          <Pagination.Item key={number + 1} active={number + 1 === currentPage} onClick={() => setCurrentPage(number + 1)}>
-            {number + 1}
-          </Pagination.Item>
-        ))}
-        <Pagination.Next onClick={() => setCurrentPage(currentPage + 1)} disabled={currentPage === totalPages} />
-      </Pagination>
+      <div style={{overflow: 'auto'}}>
+          <Pagination className="mt-3">
+            <Pagination.Prev onClick={() => setCurrentPage(currentPage - 1)} disabled={currentPage === 1} />
+            {[...Array(totalPages).keys()].map((number) => (
+              <Pagination.Item key={number + 1} active={number + 1 === currentPage} onClick={() => setCurrentPage(number + 1)}>
+                {number + 1}
+              </Pagination.Item>
+            ))}
+            <Pagination.Next onClick={() => setCurrentPage(currentPage + 1)} disabled={currentPage === totalPages} />
+          </Pagination>
+      </div>
+      
 
       {/* Modal for Adding/Editing Customers */}
       <Modal show={showModal} onHide={handleCloseModal}>
