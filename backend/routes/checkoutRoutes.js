@@ -7,7 +7,7 @@ const Bill = require("../models/Bill"); // Import Bill Model
 // Checkout Route
 router.post("/", async (req, res) => {
   try {
-    const { customerId, totalAmount, finalAmount, cart, redeemedPoints, modeOfPayment } = req.body;
+    const { customerId, totalAmount, finalAmount, cart, redeemedPoints, modeOfPayment, isGiftGiven = false } = req.body;
 
     // Find the customer by phone number
     const customer = await Customer.findOne({ phone: customerId });
@@ -20,7 +20,9 @@ router.post("/", async (req, res) => {
     let totalKgs = cart.reduce((sum, item) => sum + (item.kgs || 0), 0);
 
     // Update customer's kgsAccumulated
-    customer.kgsAccumulated = (customer.kgsAccumulated || 0) + Math.floor(totalKgs);
+    if (!isGiftGiven) {
+      customer.kgsAccumulated = (customer.kgsAccumulated || 0) + Math.floor(totalKgs);
+    }
 
 
     // Calculate earned points for this transaction
@@ -48,6 +50,7 @@ router.post("/", async (req, res) => {
       redeemedPoints: pointsToDeduct,
       kgsAccumulated: customer.kgsAccumulated,
       earnedPoints,
+      isGiftGiven,
       date: new Date(),
       modeOfPayment
     });
@@ -63,6 +66,7 @@ router.post("/", async (req, res) => {
       redeemedPoints: pointsToDeduct,
       kgsAccumulated: customer.kgsAccumulated,
       earnedPoints,
+      isGiftGiven,
       date: new Date(),
       modeOfPayment
     });

@@ -29,12 +29,11 @@ const Billing = () => {
     email: "",
     address: "",
   });
-
+  const [isGiftGiven, setIsGiftGiven] = useState(false);
   
   const quickAddItems = [
-    { name: '500gm WS', product: 'Chicken W Skin', qty: 0.5 },
-    { name: '500gm WS', product: 'Chicken W Skin', qty: 0.5 },    
     { name: '250gm WS', product: 'Chicken W Skin', qty: 0.25 },
+    { name: '500gm WS', product: 'Chicken W Skin', qty: 0.5 },    
     { name: '750gm WS', product: 'Chicken W Skin', qty: 0.75 },   
     { name: '1kg WS', product: 'Chicken W Skin', qty: 1 },
     { name: '1.5kg WS', product: 'Chicken W Skin', qty: 1.5 },
@@ -46,6 +45,9 @@ const Billing = () => {
     { name: '500gm WOS', product: 'Chicken W/O Skin', qty: 0.5 },
     { name: '1kg WOS', product: 'Chicken W/O Skin', qty: 1 },
     { name: '1.5kg WOS', product: 'Chicken W/O Skin', qty: 1.5 },
+    { name: '2kg WOS', product: 'Chicken W/O Skin', qty: 2 },
+    { name: '3kg WOS', product: 'Chicken W/O Skin', qty: 3 },
+    { name: '5kg WOS', product: 'Chicken W/O Skin', qty: 5 },
   ];
 
   // Fetch products from DB
@@ -221,11 +223,19 @@ const Billing = () => {
         finalAmount,
         redeemedPoints,
         modeOfPayment,
-        tenderedAmount: amountTendered
+        tenderedAmount: amountTendered,
+        isGiftGiven
       });
 
-      // ✅ Print Bill after checkout
-      printBill(selectedCustomer, cart, totalAmount, amountTendered, change, tokenNumber);
+      // compute total kgs locally (same as backend) and the new accumulated KGs
+      const totalKgs = cart.reduce((sum, item) => sum + (item.kgs || item.quantity || 0), 0);
+      const previousKgs = Number(selectedCustomer.kgsAccumulated || 0);
+      const newKgsAccumulated = isGiftGiven ? previousKgs : previousKgs + Math.floor(totalKgs);
+
+      // pass a copy of customer with updated kgs to printBill so print reflects latest value
+      const customerForPrint = { ...selectedCustomer, kgsAccumulated: newKgsAccumulated };
+
+      printBill(customerForPrint, cart, totalAmount, amountTendered, change, tokenNumber);
       updateTokenNumber();
 
       setCart([]);
@@ -247,6 +257,7 @@ const Billing = () => {
   };
 
   const printBill = (customer, cart, totalAmount, tenderedAmount, change, tokenNumber) => {
+    const kgsAccumulated = (customer?.kgsAccumulated || 0).toFixed(2);
     const billContent = `
       <div style="font-family: Arial, sans-serif; width: 200px;">
         <h3 style="text-align: center; margin:0px; padding: 0px;">M2M Chicken Shop</h3>
@@ -285,7 +296,9 @@ const Billing = () => {
         <p><strong>Tendered:</strong> <span style="text-align: right; float: right;" >₹ ${tenderedAmount.toFixed(2)}</span></p>
         <p><strong>Change:</strong> <span style="text-align: right; float: right;" >₹ ${change.toFixed(2)}</span></p>
         <hr>
-        <h2 style="text-align: center;">Token #:M2M-${tokenNumber}</h3>
+        <p style="text-align: left; margin-top:2px;"><strong>Claimable offer:</strong> ${kgsAccumulated}kg</p>
+
+        <h2 style="text-align: center;">Token #:M2M-${tokenNumber}</h2>
       </div>
     `;
 
@@ -528,6 +541,20 @@ const Billing = () => {
                 <option value="Credit">Credit</option>
               </Form.Select>
             </div>
+            
+            <Form.Group className="mb-3 d-flex align-items-center">
+              <Form.Label className="mb-0">Gift Given</Form.Label>
+              <div className="ms-auto">
+                <Form.Check
+                  type="switch"
+                  id="isGiftGivenSwitch"
+                  checked={isGiftGiven}
+                  onChange={() => setIsGiftGiven(prev => !prev)}
+                  aria-label="Gift Given Switch"
+                />
+              </div>
+            </Form.Group>
+            
           </Modal.Body>
           <Modal.Footer>
             <Button variant="primary" onClick={processCheckout}>Submit</Button>

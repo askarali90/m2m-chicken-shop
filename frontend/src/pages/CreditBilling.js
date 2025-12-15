@@ -27,13 +27,31 @@ const CreditBilling = () => {
     fetchCreditTransactions();
     fetchSettledTransactions();
   }, []);
-
+// ...existing code...
   useEffect(() => {
-    const settledBillIds = new Set((settledTransactions || []).map((s) => String(s.billId)));
-    const unsettled = (bills || []).filter((b) => !settledBillIds.has(String(b._id)));
+    // build map of latest settlement per billId (by date) so we can check final balance
+    const latestByBill = {};
+    (settledTransactions || []).forEach((s) => {
+      const id = String(s.billId);
+      const sDate = s.date ? new Date(s.date) : new Date(0);
+      if (!latestByBill[id] || new Date(latestByBill[id].date) < sDate) {
+        latestByBill[id] = s;
+      }
+    });
+
+    // unsettled = bills that either have no settlement OR whose latest settlement balance > 0
+    const unsettled = (bills || []).filter((b) => {
+      const id = String(b._id);
+      const latest = latestByBill[id];
+      if (!latest) return true; // no settlement at all
+      const balance = Number(latest.balance || 0);
+      return balance > 0; // still outstanding
+    });
+
     setUnsettledTransactions(unsettled);
     setUnsettledCurrentPage(1);
-  }, [bills, settledTransactions]);
+   }, [bills, settledTransactions]);
+// ...existing
 
   const fetchCreditTransactions = async () => {
     try {
