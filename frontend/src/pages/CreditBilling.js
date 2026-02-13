@@ -1,90 +1,121 @@
- import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { Table, Pagination, Form, Button, Row, Col } from "react-bootstrap";
 import * as XLSX from "xlsx";
 
 const CreditBilling = () => {
-  const [bills, setBills] = useState([]);
-  const [filteredBills, setFilteredBills] = useState([]);
+  const [allTransactions, setAllTransactions] = useState([]);
+  const [filteredTransactions, setFilteredTransactions] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+  const itemsPerPage = 10;
   const [searchCustomerId, setSearchCustomerId] = useState("");
   const [dateRange, setDateRange] = useState({ from: "", to: "" });
 
-  // new state: map of selected bills -> { settledAmount }
-  const [selectedMap, setSelectedMap] = useState({}); // { [billId]: { bill, settledAmount } }
-  const [settledTransactions, setSettledTransactions] = useState([]);
-  // pagination for settled transactions (client-side)
-  const [settledCurrentPage, setSettledCurrentPage] = useState(1);
-  const settledItemsPerPage = 5; // change page size here if needed
-// ...existing code...
+  // inline edit state for balance
+  const [editingId, setEditingId] = useState(null);
+  const [editingBalance, setEditingBalance] = useState("");
 
-  const [unsettledTransactions, setUnsettledTransactions] = useState([]);
-  const [unsettledCurrentPage, setUnsettledCurrentPage] = useState(1);
-  const unsettledItemsPerPage = 5;
+  // sorting state
+  const [sortConfig, setSortConfig] = useState({ key: "date", direction: "desc" });
+
+  // pagination for paid transactions
+  const [paidCurrentPage, setPaidCurrentPage] = useState(1);
+  const paidItemsPerPage = 10;
 
   useEffect(() => {
-    fetchCreditTransactions();
-    fetchSettledTransactions();
+    fetchAllTransactions();
   }, []);
-// ...existing code...
-  useEffect(() => {
-    // build map of latest settlement per billId (by date) so we can check final balance
-    const latestByBill = {};
-    (settledTransactions || []).forEach((s) => {
-      const id = String(s.billId);
-      const sDate = s.date ? new Date(s.date) : new Date(0);
-      if (!latestByBill[id] || new Date(latestByBill[id].date) < sDate) {
-        latestByBill[id] = s;
-      }
-    });
 
-    // unsettled = bills that either have no settlement OR whose latest settlement balance > 0
-    const unsettled = (bills || []).filter((b) => {
-      const id = String(b._id);
-      const latest = latestByBill[id];
-      if (!latest) return true; // no settlement at all
-      const balance = Number(latest.balance || 0);
-      return balance > 0; // still outstanding
-    });
-
-    setUnsettledTransactions(unsettled);
-    setUnsettledCurrentPage(1);
-   }, [bills, settledTransactions]);
-// ...existing
-
-  const fetchCreditTransactions = async () => {
+  // fetch all credit transactions with their settlement balances
+  const fetchAllTransactions = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/checkout");
-      // filter transactions where modeOfPayment is Credit
-      const creditTx = res.data.filter((t) => (t.modeOfPayment || "").toLowerCase() === "credit");
-      setBills(creditTx);
-      setFilteredBills(creditTx);
+      const billRes = await axios.get("http://localhost:5000/api/checkout");
+      const creditBills = billRes.data.filter((t) => (t.modeOfPayment || "").toLowerCase() === "credit");
+
+      const settledRes = await axios.get("http://localhost:5000/api/credit-settlements");
+      const settledMap = {}; // map billId -> latest settlement with balance
+
+      (settledRes.data || []).forEach((s) => {
+        const id = String(s.billId);
+        const sDate = s.date ? new Date(s.date) : new Date(0);
+        if (!settledMap[id] || new Date(settledMap[id].date) < sDate) {
+          settledMap[id] = s;
+        }
+      });
+
+      // merge bills with settlements
+      const merged = creditBills.map((bill) => {
+        const latest = settledMap[String(bill._id)];
+        const totalAmount = bill.totalAmount || 0;
+        const balance = latest ? (latest.balance || 0) : totalAmount;
+        const amountPaid = totalAmount - balance;
+        return {
+          billId: bill._id,
+          customerId: bill.customerId,
+          totalAmount: totalAmount,
+          earnedPoints: bill.earnedPoints || 0,
+          kgsAccumulated: bill.kgsAccumulated || 0,
+          date: bill.date,
+          modeOfPayment: bill.modeOfPayment,
+          balance: balance,
+          amountPaid: amountPaid,
+        };
+      });
+
+      setAllTransactions(merged);
+      setFilteredTransactions(merged.sort(sortByKey(merged, "date", "desc")));
       setCurrentPage(1);
     } catch (err) {
-      console.error("Error fetching credit transactions:", err);
+      console.error("Error fetching transactions:", err);
     }
   };
 
-  // fetch settled transactions to display in "Settled Credit Transactions" table
-  const fetchSettledTransactions = async () => {
-    try {
-      const res = await axios.get("http://localhost:5000/api/credit-settlements"); // ensure backend route exists
-      setSettledTransactions(res.data || []);
-    } catch (err) {
-      console.error("Error fetching settled transactions:", err);
+  const sortByKey = (arr, key, direction = "asc") => {
+    return (a, b) => {
+      let aVal = a[key];
+      let bVal = b[key];
+
+      if (key === "date") {
+        aVal = new Date(aVal);
+        bVal = new Date(bVal);
+      } else if (typeof aVal === "string") {
+        aVal = aVal.toLowerCase();
+        bVal = bVal.toLowerCase();
+      }
+
+      if (direction === "asc") {
+        return aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
+      } else {
+        return aVal < bVal ? 1 : aVal > bVal ? -1 : 0;
+      }
+    };
+  };
+
+  const handleSort = (key) => {
+    let direction = "asc";
+    if (sortConfig.key === key && sortConfig.direction === "asc") {
+      direction = "desc";
     }
+
+    const sorted = [...filteredTransactions].sort(sortByKey(filteredTransactions, key, direction));
+    setFilteredTransactions(sorted);
+    setSortConfig({ key, direction });
+  };
+
+  const getSortIndicator = (key) => {
+    if (sortConfig.key !== key) return "";
+    return sortConfig.direction === "asc" ? " ▲" : " ▼";
   };
 
   const filterByDate = (from, to) => {
     const fromDate = new Date(from);
     const toDate = new Date(to);
     toDate.setHours(23, 59, 59, 999);
-    const filtered = bills.filter((bill) => {
-      const billDate = new Date(bill.date);
-      return billDate >= fromDate && billDate <= toDate;
+    const filtered = allTransactions.filter((t) => {
+      const tDate = new Date(t.date);
+      return tDate >= fromDate && tDate <= toDate;
     });
-    setFilteredBills(filtered);
+    setFilteredTransactions(filtered);
     setCurrentPage(1);
   };
 
@@ -113,105 +144,76 @@ const CreditBilling = () => {
   const handleSearchCustomerId = () => {
     const value = searchCustomerId.trim().toLowerCase();
     if (!value) {
-      setFilteredBills(bills);
+      setFilteredTransactions(allTransactions);
       return;
     }
-    const filtered = bills.filter((bill) =>
-      (bill.customerId || "").toLowerCase().includes(value)
+    const filtered = allTransactions.filter((t) =>
+      (t.customerId || "").toLowerCase().includes(value)
     );
-    setFilteredBills(filtered);
+    setFilteredTransactions(filtered);
     setCurrentPage(1);
   };
 
   const handleShowAll = () => {
-    setFilteredBills(bills);
+    setFilteredTransactions(allTransactions);
     setCurrentPage(1);
   };
 
   const exportToExcel = () => {
-    const worksheet = XLSX.utils.json_to_sheet(filteredBills);
+    const worksheet = XLSX.utils.json_to_sheet(filteredTransactions);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Credit Transactions");
     XLSX.writeFile(workbook, "Credit_Transactions.xlsx");
   };
 
-  // toggle select a bill for settlement
-  const toggleSelectBill = (bill) => {
-    setSelectedMap((prev) => {
-      const copy = { ...prev };
-      if (copy[bill._id]) {
-        delete copy[bill._id];
-      } else {
-        copy[bill._id] = { bill, settledAmount: bill.totalAmount || 0 };
-      }
-      return copy;
-    });
+  const handleEditBalance = (transaction) => {
+    setEditingId(transaction.billId);
+    setEditingBalance(""); // Start with empty field for amount paid
   };
 
-  const handleSettledAmountChange = (billId, value) => {
-    // allow empty string for input but store numeric as parseFloat
-    const num = value === "" ? "" : parseFloat(value);
-    setSelectedMap((prev) => ({
-      ...prev,
-      [billId]: { ...prev[billId], settledAmount: num },
-    }));
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setEditingBalance("");
   };
 
-  // Save selected settlements to backend
-  const saveSettlements = async () => {
-    const entries = Object.values(selectedMap);
-    if (entries.length === 0) {
-      alert("Select at least one bill to settle.");
+  const handleSaveBalance = async (transaction) => {
+    const amountPaid = parseFloat(editingBalance);
+    if (isNaN(amountPaid) || amountPaid <= 0) {
+      alert("Enter a valid positive amount paid.");
       return;
     }
-
-    // basic validation
-    for (const e of entries) {
-      const amt = parseFloat(e.settledAmount) || 0;
-      if (amt <= 0) {
-        alert("Settled amount must be greater than 0 for selected bills.");
-        return;
-      }
-    }
-
-    const payload = entries.map((e) => ({
-      billId: e.bill._id,
-      customerId: e.bill.customerId,
-      settledAmount: parseFloat(e.settledAmount),
-      date: new Date().toISOString(),
-      originalTotal: e.bill.totalAmount || 0,
-    }));
-
+    const newBalance = Math.max(0, transaction.balance - amountPaid);
     try {
-      await axios.post("http://localhost:5000/api/credit-settlements", { settlements: payload });
-      // refresh lists
-      await fetchSettledTransactions();
-      await fetchCreditTransactions();
-      setSelectedMap({});
-      alert("Settlements saved.");
+      await axios.post("http://localhost:5000/api/credit-settlements", {
+        settlements: [{
+          billId: transaction.billId,
+          customerId: transaction.customerId,
+          settledAmount: amountPaid,
+          originalTotal: transaction.totalAmount,
+          balance: newBalance,
+          date: new Date().toISOString(),
+        }]
+      });
+      await fetchAllTransactions();
+      handleCancelEdit();
+      alert("Balance updated successfully.");
     } catch (err) {
-      console.error("Error saving settlements:", err);
-      alert(err.response?.data?.message || "Failed to save settlements.");
+      console.error("Error updating balance:", err);
+      alert("Failed to update balance.");
     }
   };
 
   const indexOfLast = currentPage * itemsPerPage;
   const indexOfFirst = indexOfLast - itemsPerPage;
-  const currentBills = filteredBills.slice(indexOfFirst, indexOfLast);
-  const totalPages = Math.max(1, Math.ceil(filteredBills.length / itemsPerPage));
+  const currentTransactions = filteredTransactions.filter((t) => t.balance > 0).slice(indexOfFirst, indexOfLast);
+  const totalPages = Math.max(1, Math.ceil(filteredTransactions.filter((t) => t.balance > 0).length / itemsPerPage));
 
-  // settled transactions pagination calculations
-  const settledIndexOfLast = settledCurrentPage * settledItemsPerPage;
-  const settledIndexOfFirst = settledIndexOfLast - settledItemsPerPage;
-  const currentSettled = settledTransactions.slice(settledIndexOfFirst, settledIndexOfLast);
-  const settledTotalPages = Math.max(1, Math.ceil(settledTransactions.length / settledItemsPerPage));
-
-  // unsettled transactions pagination calculations
-  const unsettledIndexOfLast = unsettledCurrentPage * unsettledItemsPerPage;
-  const unsettledIndexOfFirst = unsettledIndexOfLast - unsettledItemsPerPage;
-  const currentUnsettled = unsettledTransactions.slice(unsettledIndexOfFirst, unsettledIndexOfLast);
-  const unsettledTotalPages = Math.max(1, Math.ceil(unsettledTransactions.length / unsettledItemsPerPage));
-
+  // paid transactions (balance = 0)
+  const paidTransactions = filteredTransactions.filter((t) => t.balance === 0);
+  const paidIndexOfLast = paidCurrentPage * paidItemsPerPage;
+  const paidIndexOfFirst = paidIndexOfLast - paidItemsPerPage;
+  const currentPaidTransactions = paidTransactions.slice(paidIndexOfFirst, paidIndexOfLast);
+  const paidTotalPages = Math.max(1, Math.ceil(paidTransactions.length / paidItemsPerPage));
 
   return (
     <div className="container-fluid mt-4">
@@ -260,53 +262,59 @@ const CreditBilling = () => {
       <Table striped bordered hover>
         <thead className="table-dark">
           <tr>
-            <th>Select</th>
-            <th>Bill ID</th>
-            <th>Customer ID</th>
-            <th>Total Amount</th>
-            <th>Earned Points</th>
-            <th>Purchased KGs</th>
-            <th>Date</th>
-            <th>Payment Mode</th>
-            <th>Settled Amount</th>
+            <th style={{ cursor: "pointer" }} onClick={() => handleSort("billId")}>Bill ID{getSortIndicator("billId")}</th>
+            <th style={{ cursor: "pointer" }} onClick={() => handleSort("customerId")}>Customer ID{getSortIndicator("customerId")}</th>
+            <th style={{ cursor: "pointer" }} onClick={() => handleSort("totalAmount")}>Total Amount{getSortIndicator("totalAmount")}</th>
+            <th style={{ cursor: "pointer" }} onClick={() => handleSort("amountPaid")}>Amount Paid{getSortIndicator("amountPaid")}</th>
+            <th style={{ cursor: "pointer" }} onClick={() => handleSort("balance")}>Balance{getSortIndicator("balance")}</th>
+            <th style={{ cursor: "pointer" }} onClick={() => handleSort("earnedPoints")}>Earned Points{getSortIndicator("earnedPoints")}</th>
+            <th style={{ cursor: "pointer" }} onClick={() => handleSort("kgsAccumulated")}>Purchased KGs{getSortIndicator("kgsAccumulated")}</th>
+            <th style={{ cursor: "pointer" }} onClick={() => handleSort("date")}>Date{getSortIndicator("date")}</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
-          {currentBills.length > 0 ? (
-            currentBills.map((bill) => {
-              const selected = !!selectedMap[bill._id];
-              return (
-                <tr key={bill._id}>
-                  <td>
-                    <Form.Check
-                      type="checkbox"
-                      checked={selected}
-                      onChange={() => toggleSelectBill(bill)}
-                    />
-                  </td>
-                  <td>{bill._id}</td>
-                  <td>{bill.customerId}</td>
-                  <td>₹{(bill.totalAmount || 0).toFixed(2)}</td>
-                  <td>{(bill.earnedPoints || 0).toFixed(2)}</td>
-                  <td>{(bill.kgsAccumulated || 0).toFixed(2)}</td>
-                  <td>{bill.date ? new Date(bill.date).toLocaleString() : "-"}</td>
-                  <td>{bill.modeOfPayment}</td>
-                  <td style={{ minWidth: 140 }}>
-                    {selected ? (
+          {currentTransactions.length > 0 ? (
+            currentTransactions.map((t) => (
+              <tr key={t.billId}>
+                <td>{t.billId}</td>
+                <td>{t.customerId}</td>
+                <td>₹{(t.totalAmount || 0).toFixed(2)}</td>
+                <td>₹{(t.amountPaid || 0).toFixed(2)}</td>
+                <td>
+                  {editingId === t.billId ? (
+                    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                       <Form.Control
                         type="number"
                         step="0.01"
                         min="0"
-                        value={selectedMap[bill._id].settledAmount === "" ? "" : selectedMap[bill._id].settledAmount}
-                        onChange={(e) => handleSettledAmountChange(bill._id, e.target.value)}
+                        value={editingBalance}
+                        onChange={(e) => setEditingBalance(e.target.value)}
+                        style={{ width: "120px" }}
                       />
-                    ) : (
-                      <span className="text-muted">—</span>
-                    )}
-                  </td>
-                </tr>
-              );
-            })
+                      <Button size="sm" variant="success" onClick={() => handleSaveBalance(t)}>Save</Button>
+                      <Button size="sm" variant="secondary" onClick={handleCancelEdit}>Cancel</Button>
+                    </div>
+                  ) : (
+                    <span>₹{(t.balance || 0).toFixed(2)}</span>
+                  )}
+                </td>
+                <td>{(t.earnedPoints || 0).toFixed(2)}</td>
+                <td>{(t.kgsAccumulated || 0).toFixed(2)}</td>
+                <td>{t.date ? new Date(t.date).toLocaleString() : "-"}</td>
+                <td>
+                  {editingId !== t.billId && t.balance > 0 && (
+                    <Button
+                      variant="outline-primary"
+                      size="sm"
+                      onClick={() => handleEditBalance(t)}
+                    >
+                      ✎ Edit
+                    </Button>
+                  )}
+                </td>
+              </tr>
+            ))
           ) : (
             <tr>
               <td colSpan="9" className="text-center">No credit transactions found.</td>
@@ -314,10 +322,6 @@ const CreditBilling = () => {
           )}
         </tbody>
       </Table>
-
-      <div className="d-flex justify-content-end mb-3">
-        <Button variant="success" onClick={saveSettlements}>Save Settlements</Button>
-      </div>
 
       <Pagination className="justify-content-center">
         <Pagination.Prev onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} disabled={currentPage === 1} />
@@ -329,120 +333,52 @@ const CreditBilling = () => {
         <Pagination.Next onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages} />
       </Pagination>
 
-      <Row className="mb-3 mt-4">
-        <h3>Settled Credit Transactions</h3>
+      <Row className="mb-3 mt-5">
+        <h3>Credit Paid Details</h3>
       </Row>
 
       <Table striped bordered hover>
         <thead className="table-dark">
           <tr>
-            <th>Settlement ID</th>
-            <th>Bill ID</th>
-            <th>Customer ID</th>
-            <th>Settled Amount</th>
-            <th>Original Total</th>
-            <th>Balance</th>
-            <th>Date</th>
+            <th style={{ cursor: "pointer" }} onClick={() => handleSort("billId")}>Bill ID{getSortIndicator("billId")}</th>
+            <th style={{ cursor: "pointer" }} onClick={() => handleSort("customerId")}>Customer ID{getSortIndicator("customerId")}</th>
+            <th style={{ cursor: "pointer" }} onClick={() => handleSort("totalAmount")}>Total Amount{getSortIndicator("totalAmount")}</th>
+            <th style={{ cursor: "pointer" }} onClick={() => handleSort("amountPaid")}>Amount Paid{getSortIndicator("amountPaid")}</th>
+            <th style={{ cursor: "pointer" }} onClick={() => handleSort("earnedPoints")}>Earned Points{getSortIndicator("earnedPoints")}</th>
+            <th style={{ cursor: "pointer" }} onClick={() => handleSort("kgsAccumulated")}>Purchased KGs{getSortIndicator("kgsAccumulated")}</th>
+            <th style={{ cursor: "pointer" }} onClick={() => handleSort("date")}>Date{getSortIndicator("date")}</th>
           </tr>
         </thead>
         <tbody>
-          {currentSettled.length > 0 ? (
-            currentSettled.map((s) => (
-              <tr key={s._id || `${s.billId}-${s.date}`}>
-                <td>{s._id || "-"}</td>
-                <td>{s.billId}</td>
-                <td>{s.customerId}</td>
-                <td>₹{(s.settledAmount || 0).toFixed(2)}</td>
-                <td>₹{(s.originalTotal || 0).toFixed(2)}</td>
-                <td>₹{(s.balance || 0).toFixed(2)}</td>
-                <td>{s.date ? new Date(s.date).toLocaleString() : "-"}</td>
+          {currentPaidTransactions.length > 0 ? (
+            currentPaidTransactions.map((t) => (
+              <tr key={t.billId}>
+                <td>{t.billId}</td>
+                <td>{t.customerId}</td>
+                <td>₹{(t.totalAmount || 0).toFixed(2)}</td>
+                <td>₹{(t.amountPaid || 0).toFixed(2)}</td>
+                <td>{(t.earnedPoints || 0).toFixed(2)}</td>
+                <td>{(t.kgsAccumulated || 0).toFixed(2)}</td>
+                <td>{t.date ? new Date(t.date).toLocaleString() : "-"}</td>
               </tr>
             ))
           ) : (
             <tr>
-              <td colSpan="7" className="text-center">No settled transactions found.</td>
-            </tr>
-          )}
-        </tbody>
-      </Table>
-
-      <Pagination className="justify-content-center">
-        <Pagination.Prev
-          onClick={() => setSettledCurrentPage(prev => Math.max(prev - 1, 1))}
-          disabled={settledCurrentPage === 1}
-        />
-        {[...Array(settledTotalPages)].map((_, idx) => (
-          <Pagination.Item
-            key={idx}
-            active={idx + 1 === settledCurrentPage}
-            onClick={() => setSettledCurrentPage(idx + 1)}
-          >
-            {idx + 1}
-          </Pagination.Item>
-        ))}
-        <Pagination.Next
-          onClick={() => setSettledCurrentPage(prev => Math.min(prev + 1, settledTotalPages))}
-          disabled={settledCurrentPage === settledTotalPages}
-        />
-      </Pagination>
-
-      <Row className="mb-3 mt-4">
-        <h3>Unsettled Credit Transactions</h3>
-      </Row>
-
-      <Table striped bordered hover>
-        <thead className="table-dark">
-          <tr>
-            <th>Bill ID</th>
-            <th>Customer ID</th>
-            <th>Total Amount</th>
-            <th>Earned Points</th>
-            <th>Purchased KGs</th>
-            <th>Date</th>
-            <th>Payment Mode</th>
-          </tr>
-        </thead>
-        <tbody>
-          {currentUnsettled.length > 0 ? (
-            currentUnsettled.map((bill) => (
-              <tr key={bill._id}>
-                <td>{bill._id}</td>
-                <td>{bill.customerId}</td>
-                <td>₹{(bill.totalAmount || 0).toFixed(2)}</td>
-                <td>{(bill.earnedPoints || 0).toFixed(2)}</td>
-                <td>{(bill.kgsAccumulated || 0).toFixed(2)}</td>
-                <td>{bill.date ? new Date(bill.date).toLocaleString() : "-"}</td>
-                <td>{bill.modeOfPayment}</td>
-              </tr>
-            ))
-          ) : (
-            <tr>
-              <td colSpan="7" className="text-center">No unsettled transactions found.</td>
+              <td colSpan="7" className="text-center">No paid transactions found.</td>
             </tr>
           )}
         </tbody>
       </Table>
 
       <Pagination className="justify-content-center mb-4">
-        <Pagination.Prev
-          onClick={() => setUnsettledCurrentPage(prev => Math.max(prev - 1, 1))}
-          disabled={unsettledCurrentPage === 1}
-        />
-        {[...Array(unsettledTotalPages)].map((_, idx) => (
-          <Pagination.Item
-            key={idx}
-            active={idx + 1 === unsettledCurrentPage}
-            onClick={() => setUnsettledCurrentPage(idx + 1)}
-          >
+        <Pagination.Prev onClick={() => setPaidCurrentPage(prev => Math.max(prev - 1, 1))} disabled={paidCurrentPage === 1} />
+        {[...Array(paidTotalPages)].map((_, idx) => (
+          <Pagination.Item key={idx} active={idx + 1 === paidCurrentPage} onClick={() => setPaidCurrentPage(idx + 1)}>
             {idx + 1}
           </Pagination.Item>
         ))}
-        <Pagination.Next
-          onClick={() => setUnsettledCurrentPage(prev => Math.min(prev + 1, unsettledTotalPages))}
-          disabled={unsettledCurrentPage === unsettledTotalPages}
-        />
+        <Pagination.Next onClick={() => setPaidCurrentPage(prev => Math.min(prev + 1, paidTotalPages))} disabled={paidCurrentPage === paidTotalPages} />
       </Pagination>
-
     </div>
   );
 };
